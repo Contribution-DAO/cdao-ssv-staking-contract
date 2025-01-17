@@ -49,7 +49,7 @@ const config: HardhatUserConfig = {
       allowUnlimitedContractSize: true,
       forking: {
         url: "https://holesky.drpc.org",
-        blockNumber: 2790015,
+        blockNumber: 2790017,
         accounts: [
           {
             privateKey: process.env.DEPLOYER_SK,

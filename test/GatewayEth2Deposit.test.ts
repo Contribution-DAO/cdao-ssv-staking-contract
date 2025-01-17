@@ -27,16 +27,7 @@ describe("GatewayEth2Deposit", function () {
       recipient: ethers.ZeroAddress,
       basisPoints: 0,
     }
-    const referenceFeeManagerTx = await feeManagerFactory
-      .connect(owner)
-      .createFeeManager(
-        await rewardFeeManager.getAddress(),
-        clientConfig,
-        referrerConfig
-      )
-    const receipt = await referenceFeeManagerTx.wait()
-    const event: any = receipt?.logs[0]
-    const feeManagerAddress = event?.address
+    const feeManagerAddress = await rewardFeeManager.getAddress()
 
     return {
       withdrawalCredentials,
@@ -97,39 +88,6 @@ describe("GatewayEth2Deposit", function () {
   })
 
   describe("addEth", function () {
-    const setupAddEthParams = async () => {
-      const withdrawalCredentials = addressToWithdrawalCredentials(
-        client.address
-      )
-      const ethAmountPerValidator = ethers.parseEther("32")
-      const clientConfig = {
-        recipient: client.address,
-        basisPoints: 9000,
-      }
-      const referrerConfig = {
-        recipient: ethers.ZeroAddress,
-        basisPoints: 0,
-      }
-      const referenceFeeManagerTx = await feeManagerFactory
-        .connect(owner)
-        .createFeeManager(
-          await rewardFeeManager.getAddress(),
-          clientConfig,
-          referrerConfig
-        )
-      const receipt = await referenceFeeManagerTx.wait()
-      const event: any = receipt?.logs[0]
-      const feeManagerAddress = event?.address
-
-      return {
-        withdrawalCredentials,
-        ethAmountPerValidator,
-        feeManagerAddress,
-        clientConfig,
-        referrerConfig,
-      }
-    }
-
     it("Should revert when sending ETH directly", async function () {
       await expect(
         client.sendTransaction({
@@ -217,6 +175,145 @@ describe("GatewayEth2Deposit", function () {
 
       await expect(tx).to.emit(gatewayEth2Deposit, "ClientEthAdded")
     })
+
+    it("Should revert when EIP-7251 not enabled and using non-standard amount", async function () {
+      const {
+        withdrawalCredentials,
+        feeManagerAddress,
+        clientConfig,
+        referrerConfig,
+      } = await setupAddEthParams()
+
+      const nonStandardAmount = ethers.parseEther("33")
+
+      await expect(
+        gatewayEth2Deposit.addEth(
+          withdrawalCredentials,
+          nonStandardAmount,
+          feeManagerAddress,
+          client.address,
+          clientConfig,
+          referrerConfig,
+          "0x",
+          { value: nonStandardAmount }
+        )
+      ).to.be.revertedWithCustomError(
+        gatewayEth2Deposit,
+        "Eip7251NotEnabledYet"
+      )
+    })
+
+    it("Should revert when withdrawal credentials bytes not zero", async function () {
+      const {
+        ethAmountPerValidator,
+        feeManagerAddress,
+        clientConfig,
+        referrerConfig,
+      } = await setupAddEthParams()
+
+      // Create withdrawal credentials with non-zero bytes in the middle
+      const nonZeroBytes = new Uint8Array(32)
+      nonZeroBytes[0] = 0x01
+      nonZeroBytes[2] = 0x01 // Non-zero byte in the middle
+      const invalidWithdrawalCredentials = ethers.hexlify(nonZeroBytes)
+
+      await expect(
+        gatewayEth2Deposit.addEth(
+          invalidWithdrawalCredentials,
+          ethAmountPerValidator,
+          feeManagerAddress,
+          client.address,
+          clientConfig,
+          referrerConfig,
+          "0x",
+          { value: ethAmountPerValidator }
+        )
+      ).to.be.revertedWithCustomError(
+        gatewayEth2Deposit,
+        "WithdrawalCredentialsBytesNotZero"
+      )
+    })
+
+    it("Should revert when eth amount per validator is out of range", async function () {
+      const {
+        withdrawalCredentials,
+        feeManagerAddress,
+        clientConfig,
+        referrerConfig,
+      } = await setupAddEthParams()
+
+      await gatewayEth2Deposit.enableEip7251()
+
+      const tooSmallAmount = ethers.parseEther("31")
+      await expect(
+        gatewayEth2Deposit.addEth(
+          withdrawalCredentials,
+          tooSmallAmount,
+          feeManagerAddress,
+          client.address,
+          clientConfig,
+          referrerConfig,
+          "0x",
+          { value: tooSmallAmount }
+        )
+      ).to.be.revertedWithCustomError(
+        gatewayEth2Deposit,
+        "EthAmountPerValidatorInWeiOutOfRange"
+      )
+
+      const tooLargeAmount = ethers.parseEther("2049")
+      await expect(
+        gatewayEth2Deposit.addEth(
+          withdrawalCredentials,
+          tooLargeAmount,
+          feeManagerAddress,
+          client.address,
+          clientConfig,
+          referrerConfig,
+          "0x",
+          { value: tooLargeAmount }
+        )
+      ).to.be.revertedWithCustomError(
+        gatewayEth2Deposit,
+        "EthAmountPerValidatorInWeiOutOfRange"
+      )
+    })
+
+    it("Should allow multiple deposits for the same withdrawal credentials", async function () {
+      const {
+        withdrawalCredentials,
+        ethAmountPerValidator,
+        feeManagerAddress,
+        clientConfig,
+        referrerConfig,
+      } = await setupAddEthParams()
+
+      // First deposit
+      await gatewayEth2Deposit.addEth(
+        withdrawalCredentials,
+        ethAmountPerValidator,
+        feeManagerAddress,
+        client.address,
+        clientConfig,
+        referrerConfig,
+        "0x",
+        { value: ethAmountPerValidator }
+      )
+
+      // Second deposit
+      await expect(
+        gatewayEth2Deposit.addEth(
+          withdrawalCredentials,
+          ethAmountPerValidator,
+          feeManagerAddress,
+          client.address,
+          clientConfig,
+          referrerConfig,
+          "0x",
+          { value: ethAmountPerValidator }
+        )
+      ).to.emit(gatewayEth2Deposit, "ClientEthAdded")
+    })
   })
 
   describe("rejectService", function () {
@@ -234,6 +331,103 @@ describe("GatewayEth2Deposit", function () {
       await expect(
         gatewayEth2Deposit.connect(owner).rejectService(depositId, "Rejected")
       ).to.be.revertedWithCustomError(gatewayEth2Deposit, "NoDepositToReject")
+    })
+
+    it("Should successfully reject service and emit event", async function () {
+      const {
+        withdrawalCredentials,
+        ethAmountPerValidator,
+        feeManagerAddress,
+        clientConfig,
+        referrerConfig,
+      } = await setupAddEthParams()
+
+      await gatewayEth2Deposit.addEth(
+        withdrawalCredentials,
+        ethAmountPerValidator,
+        feeManagerAddress,
+        client.address,
+        clientConfig,
+        referrerConfig,
+        "0x",
+        { value: ethAmountPerValidator }
+      )
+
+      const depositId = await gatewayEth2Deposit[
+        "getDepositId(bytes32,uint96,address,(uint96,address),(uint96,address))"
+      ](
+        withdrawalCredentials,
+        ethAmountPerValidator,
+        feeManagerAddress,
+        clientConfig,
+        referrerConfig
+      )
+
+      const reason = "Test rejection reason"
+      await expect(
+        gatewayEth2Deposit.connect(owner).rejectService(depositId, reason)
+      )
+        .to.emit(gatewayEth2Deposit, "ServiceRejected")
+        .withArgs(depositId, reason)
+
+      const deposit = await gatewayEth2Deposit.depositData(depositId)
+      expect(deposit.status).to.equal(3) // ServiceRejected status
+      expect(deposit.expiration).to.equal(0)
+    })
+
+    it("Should allow immediate refund after rejection", async function () {
+      const {
+        withdrawalCredentials,
+        ethAmountPerValidator,
+        feeManagerAddress,
+        clientConfig,
+        referrerConfig,
+      } = await setupAddEthParams()
+
+      // Add ETH first
+      await gatewayEth2Deposit.addEth(
+        withdrawalCredentials,
+        ethAmountPerValidator,
+        feeManagerAddress,
+        client.address,
+        clientConfig,
+        referrerConfig,
+        "0x",
+        { value: ethAmountPerValidator }
+      )
+
+      const depositId = await gatewayEth2Deposit[
+        "getDepositId(bytes32,uint96,address,(uint96,address),(uint96,address))"
+      ](
+        withdrawalCredentials,
+        ethAmountPerValidator,
+        feeManagerAddress,
+        clientConfig,
+        referrerConfig
+      )
+
+      // Reject the service
+      await gatewayEth2Deposit
+        .connect(owner)
+        .rejectService(depositId, "Rejected")
+
+      const clientFeeManagerAddress =
+        await feeManagerFactory.predictFeeManagerAddress(
+          feeManagerAddress,
+          clientConfig,
+          referrerConfig
+        )
+
+      // Should allow immediate refund
+      await expect(
+        gatewayEth2Deposit
+          .connect(client)
+          .refund(
+            withdrawalCredentials,
+            ethAmountPerValidator,
+            clientFeeManagerAddress
+          )
+      ).to.emit(gatewayEth2Deposit, "Refund")
     })
   })
 
@@ -263,7 +457,7 @@ describe("GatewayEth2Deposit", function () {
 
       const receipt = await addEthTx.wait()
       const event: any = receipt?.logs[0]
-      depositId = event?.args?._depositId
+      depositId = event?.args?.address
     })
 
     it("Should revert if called before expiration", async function () {
@@ -286,6 +480,84 @@ describe("GatewayEth2Deposit", function () {
             feeManagerAddress
           )
       ).to.be.revertedWithCustomError(gatewayEth2Deposit, "CallerNotClient")
+    })
+
+    it("Should successfully refund after expiration", async function () {
+      const {
+        withdrawalCredentials,
+        ethAmountPerValidator,
+        feeManagerAddress,
+        clientConfig,
+        referrerConfig,
+      } = await setupAddEthParams()
+
+      // Add ETH first
+      await gatewayEth2Deposit
+        .connect(client)
+        .addEth(
+          withdrawalCredentials,
+          ethAmountPerValidator,
+          feeManagerAddress,
+          client.address,
+          clientConfig,
+          referrerConfig,
+          "0x",
+          { value: ethAmountPerValidator }
+        )
+
+      // Increase time to pass expiration
+      await ethers.provider.send("evm_increaseTime", [7 * 24 * 60 * 60]) // 7 days
+      await ethers.provider.send("evm_mine", [])
+
+      const clientFeeManagerAddress =
+        await feeManagerFactory.predictFeeManagerAddress(
+          feeManagerAddress,
+          clientConfig,
+          referrerConfig
+        )
+
+      await expect(
+        gatewayEth2Deposit
+          .connect(operator)
+          .refund(
+            withdrawalCredentials,
+            ethAmountPerValidator,
+            clientFeeManagerAddress
+          )
+      ).to.emit(gatewayEth2Deposit, "Refund")
+    })
+
+    it("Should revert refund with insufficient balance", async function () {
+      const {
+        withdrawalCredentials,
+        ethAmountPerValidator,
+        feeManagerAddress,
+        clientConfig,
+        referrerConfig,
+      } = await setupAddEthParams()
+
+      // Add ETH first
+      await gatewayEth2Deposit.addEth(
+        withdrawalCredentials,
+        ethAmountPerValidator,
+        feeManagerAddress,
+        client.address,
+        clientConfig,
+        referrerConfig,
+        "0x",
+        { value: ethAmountPerValidator }
+      )
+
+      // Try to refund without any deposit
+      await expect(
+        gatewayEth2Deposit
+          .connect(operator)
+          .refund(
+            withdrawalCredentials,
+            ethAmountPerValidator,
+            feeManagerAddress
+          )
+      ).to.be.revertedWithCustomError(gatewayEth2Deposit, "InsufficientBalance")
     })
   })
 
@@ -395,15 +667,16 @@ describe("GatewayEth2Deposit", function () {
         { value: ethers.parseEther("32") }
       )
 
+      const clientFeeManagerAddress =
+        await feeManagerFactory.predictFeeManagerAddress(
+          feeManagerAddress,
+          setupParams.clientConfig,
+          setupParams.referrerConfig
+        )
+
       depositId = await gatewayEth2Deposit[
-        "getDepositId(bytes32,uint96,address,(uint96,address),(uint96,address))"
-      ](
-        withdrawalCredentials,
-        ethAmountPerValidator,
-        feeManagerAddress,
-        setupParams.clientConfig,
-        setupParams.referrerConfig
-      )
+        "getDepositId(bytes32,uint96,address)"
+      ](withdrawalCredentials, ethAmountPerValidator, clientFeeManagerAddress)
     })
 
     it("Should return correct total balance", async function () {

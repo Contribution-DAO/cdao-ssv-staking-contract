@@ -329,9 +329,8 @@ contract SSVProxyFactory is
         FeeRecipient calldata _referrerConfig,
         bytes calldata _extraData
     ) external payable returns (bytes32, address, address) {
-        (bytes32 depositId, address feeManagerInstance) = _gatewayEth2Deposit.addEth{
-            value: msg.value
-        }(
+        (bytes32 depositId, address feeManagerInstance) = _gatewayEth2Deposit
+            .addEth{value: msg.value}(
             _eth2WithdrawalCredentials,
             _ethAmountPerValidatorInWei,
             _referenceFeeManager,
@@ -506,90 +505,6 @@ contract SSVProxyFactory is
                 referenceFeeManager_,
                 _clientConfig,
                 _referrerConfig
-            );
-        }
-    }
-
-    /// @notice Make ETH Deposit (Beacon) deposits via the official Beacon Deposit Contract
-    /// @param _depositData signatures and depositDataRoots from Beacon deposit data
-    /// @param _withdrawalCredentialsAddress address for 0x01 withdrawal credentials from Beacon deposit data (1 for the batch)
-    /// @param _ssvValidators list of pubkeys and SSV sharesData
-    function _makeBeaconDeposits(
-        DepositData calldata _depositData,
-        address _withdrawalCredentialsAddress,
-        SsvValidator[] calldata _ssvValidators
-    ) private {
-        uint256 validatorCount = _ssvValidators.length;
-
-        if (msg.value != COLLATERAL * validatorCount) {
-            revert EthValueMustBe32TimesValidatorCount(msg.value);
-        }
-
-        if (
-            _depositData.signatures.length != validatorCount ||
-            _depositData.depositDataRoots.length != validatorCount
-        ) {
-            revert DepositDataArraysShouldHaveTheSameLength(
-                validatorCount,
-                _depositData.signatures.length,
-                _depositData.depositDataRoots.length
-            );
-        }
-
-        bytes memory withdrawalCredentials = abi.encodePacked(
-            hex"010000000000000000000000",
-            _withdrawalCredentialsAddress
-        );
-
-        for (uint256 i = 0; i < validatorCount; ++i) {
-            // ETH deposit
-            _depositContract.deposit{value: COLLATERAL}(
-                _ssvValidators[i].pubkey,
-                withdrawalCredentials,
-                _depositData.signatures[i],
-                _depositData.depositDataRoots[i]
-            );
-        }
-    }
-
-    /// @notice Make ETH Deposit (Beacon) deposits via the official Beacon Deposit Contract
-    /// @param _depositData signatures and depositDataRoots from Beacon deposit data
-    /// @param _withdrawalCredentialsAddress address for 0x01 withdrawal credentials from Beacon deposit data (1 for the batch)
-    /// @param _pubkeys list of pubkeys
-    function _makeBeaconDeposits(
-        DepositData calldata _depositData,
-        address _withdrawalCredentialsAddress,
-        bytes[] calldata _pubkeys
-    ) private {
-        uint256 validatorCount = _pubkeys.length;
-
-        if (msg.value != COLLATERAL * validatorCount) {
-            revert EthValueMustBe32TimesValidatorCount(msg.value);
-        }
-
-        if (
-            _depositData.signatures.length != validatorCount ||
-            _depositData.depositDataRoots.length != validatorCount
-        ) {
-            revert DepositDataArraysShouldHaveTheSameLength(
-                validatorCount,
-                _depositData.signatures.length,
-                _depositData.depositDataRoots.length
-            );
-        }
-
-        bytes memory withdrawalCredentials = abi.encodePacked(
-            hex"010000000000000000000000",
-            _withdrawalCredentialsAddress
-        );
-
-        for (uint256 i = 0; i < validatorCount; ++i) {
-            // ETH deposit
-            _depositContract.deposit{value: COLLATERAL}(
-                _pubkeys[i],
-                withdrawalCredentials,
-                _depositData.signatures[i],
-                _depositData.depositDataRoots[i]
             );
         }
     }

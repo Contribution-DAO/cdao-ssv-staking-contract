@@ -51,7 +51,9 @@ contract FeeManagerFactory is
 
     /// @notice Set a new version of GatewayEth2Deposit contract
     /// @param gatewayEth2Deposit_ the address of the new GatewayEth2Deposit contract
-    function setGatewayEth2Deposit(address gatewayEth2Deposit_) external onlyOwner {
+    function setGatewayEth2Deposit(
+        address gatewayEth2Deposit_
+    ) external onlyOwner {
         if (
             !ERC165Checker.supportsInterface(
                 gatewayEth2Deposit_,
