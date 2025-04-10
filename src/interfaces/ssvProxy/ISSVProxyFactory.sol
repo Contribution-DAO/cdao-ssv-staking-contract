@@ -239,6 +239,7 @@ interface ISSVProxyFactory is
     /// @param _eth2WithdrawalCredentials ETH Deposit withdrawal credentials
     /// @param _ethAmountPerValidatorInWei amount of ETH to deposit per 1 validator (should be >= 32 and <= 2048)
     /// @param _feeManagerInstance user FeeManager instance that determines the terms of staking service
+    /// @param _operatorAddress operator address
     /// @param _depositData signatures and depositDataRoots from Beacon deposit data
     /// @param _operatorIds SSV operator IDs
     /// @param _publicKeys validator public keys
@@ -250,6 +251,7 @@ interface ISSVProxyFactory is
         bytes32 _eth2WithdrawalCredentials,
         uint96 _ethAmountPerValidatorInWei,
         address _feeManagerInstance,
+        address _operatorAddress,
         DepositData calldata _depositData,
         uint64[] calldata _operatorIds,
         bytes[] calldata _publicKeys,
