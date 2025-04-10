@@ -78,7 +78,7 @@ contract GatewayEth2Deposit is ERC165, IGatewayEth2Deposit, Ownable {
         bytes32 _eth2WithdrawalCredentials,
         uint96 _ethAmountPerValidatorInWei,
         address _referenceFeeManager,
-        address _sender,
+        address _operatorAddress,
         FeeRecipient calldata _clientConfig,
         FeeRecipient calldata _referrerConfig,
         bytes calldata _extraData
@@ -157,7 +157,7 @@ contract GatewayEth2Deposit is ERC165, IGatewayEth2Deposit, Ownable {
         uint40 expiration = uint40(block.timestamp + TIMEOUT);
 
         _deposits[depositId] = ClientDeposit({
-            ethDepositOperator: _sender,
+            ethDepositOperator: _operatorAddress,
             amount: amount,
             expiration: expiration,
             status: ClientDepositStatus.EthAdded,
