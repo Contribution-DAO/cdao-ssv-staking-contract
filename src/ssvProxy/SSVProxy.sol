@@ -221,7 +221,7 @@ contract SSVProxy is OwnableAssetRecover, ERC165, ISSVProxy {
     function withdrawSSVTokens(
         address _to,
         uint256 _amount
-    ) external onlyOwner {
+    ) external onlyOperatorOrOwner {
         _ssvToken.transfer(_to, _amount);
     }
 
