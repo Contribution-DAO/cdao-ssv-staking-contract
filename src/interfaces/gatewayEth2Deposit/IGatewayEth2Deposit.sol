@@ -141,6 +141,9 @@ interface IGatewayEth2Deposit is IERC165 {
     /// @notice Withdrawal credentials bytes 2 - 12 must be zero
     error WithdrawalCredentialsBytesNotZero(bytes32 _eth2WithdrawalCredentials);
 
+    /// @notice Caller should be SSVProxyFactory
+    error CallerNotSSVProxyFactory();
+
     /// @notice make makeBeaconDeposit work with custom deposit amount
     /// @dev Callable by deployer
     /// @dev Should be called after Pectra hardfork

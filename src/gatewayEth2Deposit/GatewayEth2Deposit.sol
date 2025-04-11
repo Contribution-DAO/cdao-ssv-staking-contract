@@ -83,6 +83,9 @@ contract GatewayEth2Deposit is ERC165, IGatewayEth2Deposit, Ownable {
         FeeRecipient calldata _referrerConfig,
         bytes calldata _extraData
     ) external payable returns (bytes32 depositId, address feeManagerInstance) {
+        if (msg.sender != address(_ssvProxyFactory)) {
+            revert CallerNotSSVProxyFactory();
+        }
         if (msg.value < MIN_DEPOSIT) {
             revert NoSmallDeposits();
         }
