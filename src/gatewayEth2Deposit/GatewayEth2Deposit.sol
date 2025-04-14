@@ -78,11 +78,14 @@ contract GatewayEth2Deposit is ERC165, IGatewayEth2Deposit, Ownable {
         bytes32 _eth2WithdrawalCredentials,
         uint96 _ethAmountPerValidatorInWei,
         address _referenceFeeManager,
-        address _sender,
+        address _operatorAddress,
         FeeRecipient calldata _clientConfig,
         FeeRecipient calldata _referrerConfig,
         bytes calldata _extraData
     ) external payable returns (bytes32 depositId, address feeManagerInstance) {
+        if (msg.sender != address(_ssvProxyFactory)) {
+            revert CallerNotSSVProxyFactory();
+        }
         if (msg.value < MIN_DEPOSIT) {
             revert NoSmallDeposits();
         }
@@ -131,7 +134,8 @@ contract GatewayEth2Deposit is ERC165, IGatewayEth2Deposit, Ownable {
         depositId = getDepositId(
             _eth2WithdrawalCredentials,
             _ethAmountPerValidatorInWei,
-            feeManagerInstance
+            feeManagerInstance,
+            _operatorAddress
         );
 
         if (
@@ -157,7 +161,7 @@ contract GatewayEth2Deposit is ERC165, IGatewayEth2Deposit, Ownable {
         uint40 expiration = uint40(block.timestamp + TIMEOUT);
 
         _deposits[depositId] = ClientDeposit({
-            ethDepositOperator: _sender,
+            ethDepositOperator: _operatorAddress,
             amount: amount,
             expiration: expiration,
             status: ClientDepositStatus.EthAdded,
@@ -197,12 +201,14 @@ contract GatewayEth2Deposit is ERC165, IGatewayEth2Deposit, Ownable {
     function refund(
         bytes32 _eth2WithdrawalCredentials,
         uint96 _ethAmountPerValidatorInWei,
-        address _feeManagerInstance
+        address _feeManagerInstance,
+        address _operatorAddress
     ) public {
         bytes32 depositId = getDepositId(
             _eth2WithdrawalCredentials,
             _ethAmountPerValidatorInWei,
-            _feeManagerInstance
+            _feeManagerInstance,
+            _operatorAddress
         );
 
         address client = IFeeManager(_feeManagerInstance).client();
@@ -242,6 +248,7 @@ contract GatewayEth2Deposit is ERC165, IGatewayEth2Deposit, Ownable {
         bytes32 _eth2WithdrawalCredentials,
         uint96 _ethAmountPerValidatorInWei,
         address _feeManagerInstance,
+        address _operatorAddress,
         bytes[] calldata _pubkeys,
         bytes[] calldata _signatures,
         bytes32[] calldata _depositDataRoots
@@ -251,7 +258,8 @@ contract GatewayEth2Deposit is ERC165, IGatewayEth2Deposit, Ownable {
         bytes32 depositId = getDepositId(
             _eth2WithdrawalCredentials,
             _ethAmountPerValidatorInWei,
-            _feeManagerInstance
+            _feeManagerInstance,
+            _operatorAddress
         );
         ClientDeposit memory clientDeposit = _deposits[depositId];
 
@@ -325,14 +333,16 @@ contract GatewayEth2Deposit is ERC165, IGatewayEth2Deposit, Ownable {
     function getDepositId(
         bytes32 _eth2WithdrawalCredentials,
         uint96 _ethAmountPerValidatorInWei,
-        address _feeManagerInstance
+        address _feeManagerInstance,
+        address _operatorAddress
     ) public pure returns (bytes32) {
         return
             keccak256(
                 abi.encode(
                     _eth2WithdrawalCredentials,
                     _ethAmountPerValidatorInWei,
-                    _feeManagerInstance
+                    _feeManagerInstance,
+                    _operatorAddress
                 )
             );
     }
@@ -343,7 +353,8 @@ contract GatewayEth2Deposit is ERC165, IGatewayEth2Deposit, Ownable {
         uint96 _ethAmountPerValidatorInWei,
         address _referenceFeeManager,
         FeeRecipient calldata _clientConfig,
-        FeeRecipient calldata _referrerConfig
+        FeeRecipient calldata _referrerConfig,
+        address _operatorAddress
     ) public view returns (bytes32) {
         address feeManagerInstance = _feeManagerFactory
             .predictFeeManagerAddress(
@@ -356,7 +367,8 @@ contract GatewayEth2Deposit is ERC165, IGatewayEth2Deposit, Ownable {
             getDepositId(
                 _eth2WithdrawalCredentials,
                 _ethAmountPerValidatorInWei,
-                feeManagerInstance
+                feeManagerInstance,
+                _operatorAddress
             );
     }
 

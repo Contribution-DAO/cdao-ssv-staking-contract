@@ -141,6 +141,9 @@ interface IGatewayEth2Deposit is IERC165 {
     /// @notice Withdrawal credentials bytes 2 - 12 must be zero
     error WithdrawalCredentialsBytesNotZero(bytes32 _eth2WithdrawalCredentials);
 
+    /// @notice Caller should be SSVProxyFactory
+    error CallerNotSSVProxyFactory();
+
     /// @notice make makeBeaconDeposit work with custom deposit amount
     /// @dev Callable by deployer
     /// @dev Should be called after Pectra hardfork
@@ -183,16 +186,19 @@ interface IGatewayEth2Deposit is IERC165 {
     /// @param _eth2WithdrawalCredentials ETH Deposit withdrawal credentials
     /// @param _ethAmountPerValidatorInWei amount of ETH to deposit per 1 validator (should be >= 32 and <= 2048)
     /// @param _feeManagerInstance client FeeManager instance that has non-zero ETH amount (can be checked by `depositAmount`)
+    /// @param _operatorAddress operator address
     function refund(
         bytes32 _eth2WithdrawalCredentials,
         uint96 _ethAmountPerValidatorInWei,
-        address _feeManagerInstance
+        address _feeManagerInstance,
+        address _operatorAddress
     ) external;
 
     /// @notice Send ETH to ETH Deposit DepositContract on behalf of the client. Callable by Operator
     /// @param _eth2WithdrawalCredentials ETH Deposit withdrawal credentials
     /// @param _ethAmountPerValidatorInWei amount of ETH to deposit per 1 validator (should be >= 32 and <= 2048)
     /// @param _feeManagerInstance user FeeManager instance that determines the terms of staking service
+    /// @param _operatorAddress operator address
     /// @param _pubkeys BLS12-381 public keys
     /// @param _signatures BLS12-381 signatures
     /// @param _depositDataRoots SHA-256 hashes of the SSZ-encoded DepositData objects
@@ -200,6 +206,7 @@ interface IGatewayEth2Deposit is IERC165 {
         bytes32 _eth2WithdrawalCredentials,
         uint96 _ethAmountPerValidatorInWei,
         address _feeManagerInstance,
+        address _operatorAddress,
         bytes[] calldata _pubkeys,
         bytes[] calldata _signatures,
         bytes32[] calldata _depositDataRoots
@@ -213,11 +220,13 @@ interface IGatewayEth2Deposit is IERC165 {
     /// @param _eth2WithdrawalCredentials ETH Deposit withdrawal credentials
     /// @param _ethAmountPerValidatorInWei amount of ETH to deposit per 1 validator (should be >= 32 and <= 2048)
     /// @param _feeManagerInstance user FeeManager instance that determines the terms of staking service
+    /// @param _operatorAddress operator address
     /// @return bytes32 deposit ID
     function getDepositId(
         bytes32 _eth2WithdrawalCredentials,
         uint96 _ethAmountPerValidatorInWei,
-        address _feeManagerInstance
+        address _feeManagerInstance,
+        address _operatorAddress
     ) external pure returns (bytes32);
 
     /// @notice Returns the ID of client deposit
@@ -226,13 +235,15 @@ interface IGatewayEth2Deposit is IERC165 {
     /// @param _referenceFeeManager address of FeeManager template that determines the terms of staking service
     /// @param _clientConfig address and basis points (percent * 100) of the client
     /// @param _referrerConfig address and basis points (percent * 100) of the referrer.
+    /// @param _operatorAddress operator address
     /// @return bytes32 deposit ID
     function getDepositId(
         bytes32 _eth2WithdrawalCredentials,
         uint96 _ethAmountPerValidatorInWei,
         address _referenceFeeManager,
         FeeRecipient calldata _clientConfig,
-        FeeRecipient calldata _referrerConfig
+        FeeRecipient calldata _referrerConfig,
+        address _operatorAddress
     ) external view returns (bytes32);
 
     /// @notice Returns the amount of ETH in wei that is associated with a client FeeManager instance

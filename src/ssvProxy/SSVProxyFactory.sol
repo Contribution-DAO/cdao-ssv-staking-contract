@@ -372,6 +372,7 @@ contract SSVProxyFactory is
         bytes32 _eth2WithdrawalCredentials,
         uint96 _ethAmountPerValidatorInWei,
         address _feeManagerInstance,
+        address _operatorAddress,
         DepositData calldata _depositData,
         uint64[] calldata _operatorIds,
         bytes[] calldata _publicKeys,
@@ -394,6 +395,7 @@ contract SSVProxyFactory is
             _eth2WithdrawalCredentials,
             _ethAmountPerValidatorInWei,
             _feeManagerInstance,
+            _operatorAddress,
             _publicKeys,
             _depositData.signatures,
             _depositData.depositDataRoots
