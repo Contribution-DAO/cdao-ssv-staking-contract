@@ -1,6 +1,7 @@
 import { task, subtask, types } from "hardhat/config"
 import { defaultClientBasisPoints, networkConfigs } from "./config"
 import { saveDeployment } from "./utils/saveDeployment"
+import { formatEther } from "ethers"
 
 task("deploy:all", "Deploy CDAO Staking Smart Contracts").setAction(
   async ({}, hre) => {
@@ -15,9 +16,14 @@ task("deploy:all", "Deploy CDAO Staking Smart Contracts").setAction(
       throw new Error(`No configuration found for network: ${networkName}`)
     }
 
-    const [deployer, _, fee] = await hre.ethers.getSigners()
+    const [deployer] = await hre.ethers.getSigners()
     console.log(`Deploying contracts with the account:${deployer.address}`)
     console.log(`Network: ${networkName}`)
+
+    const fee = process.env.FEE_ADDR
+
+    // Track deployer's ETH balance before deployment
+    const balanceBefore = await hre.ethers.provider.getBalance(deployer.address)
 
     const feeManagerFactoryAddr = await hre.run("deploy:feeManagerFactory", {
       defaultClientBasisPoints,
@@ -28,7 +34,7 @@ task("deploy:all", "Deploy CDAO Staking Smart Contracts").setAction(
     })
     const refFeeAddr = await hre.run("deploy:refFee", {
       feeManagerFactoryAddr,
-      fee: fee.address,
+      fee: fee,
     })
     const ssvProxyFactoryAddr = await hre.run("deploy:ssvProxyFactory", {
       gatewayEth2DepositAddr,
@@ -63,6 +69,11 @@ task("deploy:all", "Deploy CDAO Staking Smart Contracts").setAction(
       SSVProxyFactory: ssvProxyFactoryAddr,
       SSVProxy: ssvProxyAddr,
     })
+
+    // Track deployer's ETH balance after deployment
+    const balanceAfter = await hre.ethers.provider.getBalance(deployer.address)
+    const ethUsed = balanceBefore - balanceAfter
+    console.log("Total ETH used for deployment:", formatEther(ethUsed), "ETH")
 
     console.log("Finished Deployment process")
     console.log("SSVProxyFactory: ", ssvProxyFactoryAddr)

@@ -72,41 +72,58 @@ export const networkConfigs: { [key: string]: NetworkConfig } = {
     ],
   },
   mainnet: {
-    ssvNetwork: "0x0", // Replace with actual mainnet addresses
-    ssvViews: "0x0",
-    ssvToken: "0x0",
-    nativeDeposit: "0x0",
+    ssvNetwork: "0xDD9BC35aE942eF0cFa76930954a156B3fF30a4E1", // Replace with actual mainnet addresses
+    ssvViews: "0xafE830B6Ee262ba11cce5F32fDCd760FFE6a66e4",
+    ssvToken: "0x9D65fF81a3c488d585bBfb0Bfe3c7707c7917f54",
+    nativeDeposit: "0x00000000219ab540356cBB839Cbe05303d7705Fa",
     maxSSVOperator: 24,
     maxSSVTokenPerValidator: parseEther("30"),
     exchangeRate: 7539000000000000n,
-    operatorsOwner: [],
-    operators: [],
-  },
-  hardhat: {
-    ssvNetwork: "0x38A4794cCEd47d3baf7370CcC43B560D3a1beEFA",
-    ssvViews: "0x352A18AEe90cdcd825d1E37d9939dCA86C00e281",
-    ssvToken: "0xad45A78180961079BFaeEe349704F411dfF947C6",
-    nativeDeposit: "0x4242424242424242424242424242424242424242",
-    maxSSVOperator: 24,
-    maxSSVTokenPerValidator: parseEther("30"),
-    exchangeRate: 7539000000000000n,
-    operatorsOwner: ["0x99fC13a5b46491D84494165FFaa540fFE7AB78D1"],
+    operatorsOwner: ["0xD677222De276Db403447c751AEC6678bFA356D43"],
     operators: [
       {
-        id: 848,
-        owner: "0x99fC13a5b46491D84494165FFaa540fFE7AB78D1",
+        id: 1913,
+        owner: "0xD677222De276Db403447c751AEC6678bFA356D43",
       },
       {
-        id: 1376,
-        owner: "0x99fC13a5b46491D84494165FFaa540fFE7AB78D1",
+        id: 1914,
+        owner: "0xD677222De276Db403447c751AEC6678bFA356D43",
       },
       {
-        id: 1377,
-        owner: "0x99fC13a5b46491D84494165FFaa540fFE7AB78D1",
+        id: 1915,
+        owner: "0xD677222De276Db403447c751AEC6678bFA356D43",
       },
       {
-        id: 1378,
-        owner: "0x99fC13a5b46491D84494165FFaa540fFE7AB78D1",
+        id: 1916,
+        owner: "0xD677222De276Db403447c751AEC6678bFA356D43",
+      },
+    ],
+  },
+  hardhat: {
+    ssvNetwork: "0xDD9BC35aE942eF0cFa76930954a156B3fF30a4E1",
+    ssvViews: "0xafE830B6Ee262ba11cce5F32fDCd760FFE6a66e4",
+    ssvToken: "0x9D65fF81a3c488d585bBfb0Bfe3c7707c7917f54",
+    nativeDeposit: "0x00000000219ab540356cBB839Cbe05303d7705Fa",
+    maxSSVOperator: 24,
+    maxSSVTokenPerValidator: parseEther("30"),
+    exchangeRate: 7539000000000000n,
+    operatorsOwner: ["0xD677222De276Db403447c751AEC6678bFA356D43"],
+    operators: [
+      {
+        id: 1913,
+        owner: "0xD677222De276Db403447c751AEC6678bFA356D43",
+      },
+      {
+        id: 1914,
+        owner: "0xD677222De276Db403447c751AEC6678bFA356D43",
+      },
+      {
+        id: 1915,
+        owner: "0xD677222De276Db403447c751AEC6678bFA356D43",
+      },
+      {
+        id: 1916,
+        owner: "0xD677222De276Db403447c751AEC6678bFA356D43",
       },
     ],
   },

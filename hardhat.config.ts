@@ -48,8 +48,8 @@ const config: HardhatUserConfig = {
     hardhat: {
       allowUnlimitedContractSize: true,
       forking: {
-        url: "https://holesky.drpc.org",
-        blockNumber: 2790017,
+        url: "https://mainnet.infura.io/v3/3992865ba492484782699ed9c210c599",
+        // blockNumber: 2790017,
         accounts: [
           {
             privateKey: process.env.DEPLOYER_SK,
@@ -83,6 +83,11 @@ const config: HardhatUserConfig = {
         process.env.HOLESKY_OWNER,
         process.env.HOLESKY_FEE,
       ],
+    },
+    mainnet: {
+      url: "http://15.235.214.56:8545/",
+      chainId: 1,
+      accounts: [process.env.DEPLOYER_SK],
     },
   },
   namedAccounts: {
