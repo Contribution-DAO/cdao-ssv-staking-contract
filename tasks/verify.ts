@@ -13,7 +13,8 @@ task("verify:all", "Verify all deployed contracts").setAction(
     }
 
     const deployment = await readDeployment(Number(network.chainId))
-    const [deployer, _, fee] = await hre.ethers.getSigners()
+    const [deployer, _] = await hre.ethers.getSigners()
+    const fee = process.env.FEE_ADDR
 
     console.log("Verifying FeeManagerFactory...")
     await hre.run("verify:verify", {
@@ -33,7 +34,7 @@ task("verify:all", "Verify all deployed contracts").setAction(
     console.log("Verifying ReferenceFeeManager...")
     await hre.run("verify:verify", {
       address: deployment.ReferenceFeeManager,
-      constructorArguments: [deployment.FeeManagerFactory, fee.address],
+      constructorArguments: [deployment.FeeManagerFactory, fee],
     })
 
     console.log("Verifying SSVProxyFactory...")
