@@ -102,6 +102,9 @@ interface IFeeManager is IERC165 {
     /// @notice zero ether balance
     error NothingToWithdraw();
 
+    /// @notice insufficient balance for requested withdrawal amount
+    error InsufficientBalance();
+
     /// @notice Throws if called by any account other than the client.
     /// @param _caller address of the caller
     /// @param _client address of the client

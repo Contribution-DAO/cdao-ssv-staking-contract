@@ -1,16 +1,17 @@
-import "dotenv/config"
-import { HardhatUserConfig } from "hardhat/config"
-import { parseEther } from "viem"
+import "dotenv/config";
+import { HardhatUserConfig } from "hardhat/config";
+import { parseEther } from "viem";
 
-import "@nomicfoundation/hardhat-toolbox"
-import "@nomicfoundation/hardhat-foundry"
-import "@nomicfoundation/hardhat-network-helpers"
-import "@nomicfoundation/hardhat-verify"
+import "@nomicfoundation/hardhat-toolbox";
+import "@nomicfoundation/hardhat-foundry";
+import "@nomicfoundation/hardhat-network-helpers";
+import "@nomicfoundation/hardhat-verify";
 
-import "./tasks/deploy"
-import "./tasks/setOperator"
-import "./tasks/setSSVFactory"
-import "./tasks/verify"
+import "./tasks/deploy";
+import "./tasks/deployRewardFeeManager";
+import "./tasks/setOperator";
+import "./tasks/setSSVFactory";
+import "./tasks/verify";
 
 const config: HardhatUserConfig = {
   sourcify: {
@@ -25,6 +26,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "http://15.235.214.56:8500/api",
           browserURL: "http://15.235.214.56:8500/",
+        },
+      },
+      {
+        network: "hoodi",
+        chainId: 560048,
+        urls: {
+          apiURL: "https://hoodi.etherscan.io/api",
+          browserURL: "https://hoodi.etherscan.io/",
         },
       },
     ],
@@ -84,6 +93,15 @@ const config: HardhatUserConfig = {
         process.env.HOLESKY_FEE,
       ],
     },
+    hoodi: {
+      url: "https://0xrpc.io/hoodi",
+      chainId: 560048,
+      accounts: [
+        process.env.HOODI_DEPLOYER,
+        process.env.HOODI_OWNER,
+        process.env.HOODI_FEE,
+      ],
+    },
   },
   namedAccounts: {
     deployer: {
@@ -96,6 +114,6 @@ const config: HardhatUserConfig = {
       default: 2,
     },
   },
-}
+};
 
-export default config
+export default config;

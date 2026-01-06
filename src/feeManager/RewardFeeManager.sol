@@ -80,4 +80,58 @@ contract RewardFeeManager is FeeManager {
 
         emit Withdrawn(serviceAmount, clientAmount, referrerAmount);
     }
+
+    /// @notice Withdraw a specific amount from the contract according to the pre-defined basis points.
+    /// @param _amount The total amount to withdraw, which will be split among service, client, and referrer.
+    function withdrawAmount(uint256 _amount) external nonReentrant {
+        address withdrawOperator = _ssvProxyFactory.operator();
+
+        if (
+            msg.sender != withdrawOperator &&
+            msg.sender != _clientConfig.recipient
+        ) {
+            revert CallerNotClient(msg.sender, _clientConfig.recipient);
+        }
+
+        if (_clientConfig.recipient == address(0)) {
+            revert ClientNotSet();
+        }
+
+        if (_amount == 0) {
+            revert NothingToWithdraw();
+        }
+
+        // Check contract has sufficient balance
+        uint256 balance = address(this).balance;
+        if (balance < _amount) {
+            revert InsufficientBalance();
+        }
+
+        // how much should client get
+        uint256 clientAmount = (_amount * _clientConfig.basisPoints) / 10000;
+
+        // how much should service get
+        uint256 serviceAmount = _amount - clientAmount;
+
+        // how much should referrer get
+        uint256 referrerAmount;
+
+        if (_referrerConfig.recipient != address(0)) {
+            // if there is a referrer
+
+            referrerAmount = (_amount * _referrerConfig.basisPoints) / 10000;
+            serviceAmount -= referrerAmount;
+
+            // Send ETH to referrer. Ignore the possible yet unlikely revert in the receive function.
+            AddressLib._sendValue(_referrerConfig.recipient, referrerAmount);
+        }
+
+        // Send ETH to service. Ignore the possible yet unlikely revert in the receive function.
+        AddressLib._sendValue(_service, serviceAmount);
+
+        // Send ETH to client. Ignore the possible yet unlikely revert in the receive function.
+        AddressLib._sendValue(_clientConfig.recipient, clientAmount);
+
+        emit Withdrawn(serviceAmount, clientAmount, referrerAmount);
+    }
 }
