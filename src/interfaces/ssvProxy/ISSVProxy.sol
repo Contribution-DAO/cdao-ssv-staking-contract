@@ -63,51 +63,47 @@ interface ISSVProxy is IOwnableWithOperator, IERC165 {
     /// @param _selector function selector to be called on SSVNetwork
     error SelectorNotAllowed(address _caller, bytes4 _selector);
 
+    /// @notice ETH transfer failed
+    error EthTransferFailed();
+
     /// @notice Initialize the SSVProxy instance
     /// @dev Should only be called by SSVProxyFactory
     /// @param _feeManager FeeManager instance that determines the identity of this SSVProxy instance
     function initialize(address _feeManager) external;
 
     /// @notice Call an arbitrary external contract with SSVProxy as a msg.sender
-    /// @dev Should be called by owner only
-    /// @dev This function can help e.g. in claiming airdrops
+    /// @dev Should be called by owner only. Payable to forward ETH to payable functions.
     /// @param _contract external contract address
     /// @param _calldata calldata for the external contract
     function callAnyContract(
         address _contract,
         bytes calldata _calldata
-    ) external;
+    ) external payable;
 
     /// @notice Registers new validators on the SSV Network
     /// @dev Should be called by SSVProxyFactory only
     /// @param publicKeys The public keys of the new validators
     /// @param operatorIds Array of IDs of operators managing this validator
     /// @param sharesData Encrypted shares related to the new validators
-    /// @param amount Amount of SSV tokens to be deposited
     /// @param cluster Cluster to be used with the new validator
     function bulkRegisterValidators(
         bytes[] calldata publicKeys,
         uint64[] calldata operatorIds,
         bytes[] calldata sharesData,
-        uint256 amount,
         ISSVNetwork.Cluster calldata cluster
-    ) external;
+    ) external payable;
 
-    /// @notice Deposit SSV tokens to SSV clusters
+    /// @notice Deposit ETH to SSV clusters
     /// @dev Can be called by anyone
-    /// This function is just batching calls for convenience. It's possible to call the same function on SSVNetwork directly
-    /// @param _tokenAmount SSV token amount to be deposited
     /// @param _operatorIds SSV operator IDs
     /// @param _clusters SSV clusters
     function depositToSSV(
-        uint256 _tokenAmount,
         uint64[] calldata _operatorIds,
         ISSVNetwork.Cluster[] calldata _clusters
-    ) external;
+    ) external payable;
 
     /// @notice Withdraw SSV tokens from SSV clusters to this contract
     /// @dev Should be called by Operator only
-    /// This function is just batching calls for convenience. It's always possible to call the same function on SSVNetwork via fallback
     /// @param _tokenAmount SSV token amount to be withdrawn
     /// @param _operatorIds SSV operator IDs
     /// @param _clusters SSV clusters
@@ -117,33 +113,23 @@ interface ISSVProxy is IOwnableWithOperator, IERC165 {
         ISSVNetwork.Cluster[] calldata _clusters
     ) external;
 
-    /// @notice Withdraw SSV tokens from this contract to the given address
-    /// @dev Should be called by Operator only
-    /// @param _to destination address
-    /// @param _amount SSV token amount to be withdrawn
-    function withdrawSSVTokens(address _to, uint256 _amount) external;
-
-    /// @notice Withdraw all SSV tokens from this contract to SSVProxyFactory
-    /// @dev Should be called by Operator only
-    function withdrawAllSSVTokensToFactory() external;
-
-    /// @notice Withdraw SSV tokens from SSV clusters to SSVProxyFactory
-    /// @dev Should be called by Operator only
-    /// @param _tokenAmount SSV token amount to be withdrawn
+    /// @notice Migrate a cluster from SSV token payments to ETH payments
+    /// @dev Should be called by Operator or Owner
     /// @param _operatorIds SSV operator IDs
-    /// @param _clusters SSV clusters
-    function withdrawFromSSVToFactory(
-        uint256 _tokenAmount,
+    /// @param _cluster SSV cluster
+    function migrateClusterToETH(
         uint64[] calldata _operatorIds,
-        ISSVNetwork.Cluster[] calldata _clusters
-    ) external;
+        ISSVNetwork.Cluster calldata _cluster
+    ) external payable;
+
+    /// @notice Withdraw native ETH from this contract
+    /// @dev Should be called by Operator or Owner
+    /// @param _to destination address
+    /// @param _amount ETH amount to withdraw
+    function withdrawETH(address payable _to, uint256 _amount) external;
 
     /// @notice Set a new fee recipient address for this contract (cluster owner)
     /// @dev Should be called by Operator only.
-    /// Another FeeManager instance can become the fee recipient (e.g. if service percentages change).
-    /// Client address itself can become the fee recipient (e.g. if service percentage becomes zero due to some promo).
-    /// It's fine for Operator to determine the fee recipient since Operator is paying SSV tokens and EL rewards are a way to compansate for them.
-    /// Other operators are compansated via SSV tokens paid by Operator.
     /// @param _feeRecipientAddress fee recipient address to set
     function setFeeRecipientAddress(address _feeRecipientAddress) external;
 

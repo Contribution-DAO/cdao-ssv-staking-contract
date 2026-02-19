@@ -2,7 +2,6 @@
 
 pragma solidity 0.8.24;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 
@@ -18,17 +17,14 @@ import "../libraries/DepositStruct.sol";
 /// @title Proxy for SSVNetwork calls.
 /// @dev Each instance of SSVProxy corresponds to 1 FeeManager instance.
 /// Thus, client to SSVProxy instances is a 1-to-many relation.
-/// SSV tokens are managed by Operator.
-/// Clients cover the costs of SSV tokens by EL rewards via FeeManager instance.
+/// ETH is used for SSV cluster funding.
+/// Clients cover the costs of ETH by EL rewards via FeeManager instance.
 contract SSVProxy is OwnableAssetRecover, ERC165, ISSVProxy {
     /// @notice SSVProxyFactory address
     ISSVProxyFactory private immutable _ssvProxyFactory;
 
     /// @notice SSVNetwork address
     ISSVNetwork private immutable _ssvNetwork;
-
-    /// @notice SSV token (ERC-20) address
-    IERC20 private immutable _ssvToken;
 
     /// @notice FeeManager instance address
     IFeeManager private _feeManager;
@@ -86,11 +82,9 @@ contract SSVProxy is OwnableAssetRecover, ERC165, ISSVProxy {
     /// @dev Set values that are constant, common for all clients, known at the initial deploy time.
     /// @param ssvProxyFactory_ address of SSVProxyFactory
     /// @param ssvNetwork_ address of SSV Network
-    /// @param ssvToken_ address of SSV Token
     constructor(
         address ssvProxyFactory_,
-        address ssvNetwork_,
-        address ssvToken_
+        address ssvNetwork_
     ) {
         if (
             !ERC165Checker.supportsInterface(
@@ -103,21 +97,21 @@ contract SSVProxy is OwnableAssetRecover, ERC165, ISSVProxy {
 
         _ssvProxyFactory = ISSVProxyFactory(ssvProxyFactory_);
         _ssvNetwork = ISSVNetwork(ssvNetwork_);
-        _ssvToken = IERC20(ssvToken_);
     }
+
+    /// @notice Accept ETH deposits
+    receive() external payable {}
 
     /// @inheritdoc ISSVProxy
     function initialize(address feeManager_) external onlySSVProxyFactory {
         _feeManager = IFeeManager(feeManager_);
-
-        _ssvToken.approve(address(_ssvNetwork), type(uint256).max);
 
         emit Initialized(feeManager_);
     }
 
     /// @dev Access any SSVNetwork function as cluster owner (this SSVProxy instance)
     /// Each selector access is managed by SSVProxyFactory roles (owner, operator, client)
-    fallback() external {
+    fallback() external payable {
         address caller = msg.sender;
         bytes4 selector = msg.sig;
 
@@ -131,7 +125,7 @@ contract SSVProxy is OwnableAssetRecover, ERC165, ISSVProxy {
             revert SelectorNotAllowed(caller, selector);
         }
 
-        (bool success, bytes memory data) = address(_ssvNetwork).call(msg.data);
+        (bool success, bytes memory data) = address(_ssvNetwork).call{value: msg.value}(msg.data);
         if (success) {
             emit SuccessfullyCalledViaFallback(caller, selector);
 
@@ -148,8 +142,8 @@ contract SSVProxy is OwnableAssetRecover, ERC165, ISSVProxy {
     function callAnyContract(
         address _contract,
         bytes calldata _calldata
-    ) external onlyOwner {
-        (bool success, bytes memory data) = address(_contract).call(_calldata);
+    ) external payable onlyOwner {
+        (bool success, bytes memory data) = address(_contract).call{value: msg.value}(_calldata);
         if (success) {
             emit SuccessfullyCalledExternalContract(
                 _contract,
@@ -170,14 +164,12 @@ contract SSVProxy is OwnableAssetRecover, ERC165, ISSVProxy {
         bytes[] calldata publicKeys,
         uint64[] calldata operatorIds,
         bytes[] calldata sharesData,
-        uint256 amount,
         ISSVNetwork.Cluster calldata cluster
-    ) external onlySSVProxyFactory {
-        _ssvNetwork.bulkRegisterValidator(
+    ) external payable onlySSVProxyFactory {
+        _ssvNetwork.bulkRegisterValidator{value: msg.value}(
             publicKeys,
             operatorIds,
             sharesData,
-            amount,
             cluster
         );
         _ssvNetwork.setFeeRecipientAddress(address(_feeManager));
@@ -185,19 +177,22 @@ contract SSVProxy is OwnableAssetRecover, ERC165, ISSVProxy {
 
     /// @inheritdoc ISSVProxy
     function depositToSSV(
-        uint256 _tokenAmount,
         uint64[] calldata _operatorIds,
         ISSVNetwork.Cluster[] calldata _clusters
-    ) external {
+    ) external payable {
         address clusterOwner = address(this);
         uint256 validatorCount = _clusters.length;
-        uint256 tokenPerValidator = _tokenAmount / validatorCount;
+        uint256 ethPerValidator = msg.value / validatorCount;
 
         for (uint256 i = 0; i < validatorCount; ++i) {
-            _ssvNetwork.deposit(
+            uint256 value = ethPerValidator;
+            // Give any remainder to the last validator
+            if (i == validatorCount - 1) {
+                value = msg.value - ethPerValidator * (validatorCount - 1);
+            }
+            _ssvNetwork.deposit{value: value}(
                 clusterOwner,
                 _operatorIds,
-                tokenPerValidator,
                 _clusters[i]
             );
         }
@@ -218,26 +213,34 @@ contract SSVProxy is OwnableAssetRecover, ERC165, ISSVProxy {
     }
 
     /// @inheritdoc ISSVProxy
-    function withdrawSSVTokens(
-        address _to,
-        uint256 _amount
-    ) external onlyOperatorOrOwner {
-        _ssvToken.transfer(_to, _amount);
+    function migrateClusterToETH(
+        uint64[] calldata _operatorIds,
+        ISSVNetwork.Cluster calldata _cluster
+    ) external payable {
+        address caller = msg.sender;
+        if (
+            caller != owner() &&
+            caller != operator() &&
+            caller != address(_ssvProxyFactory)
+        ) {
+            revert CallerNeitherOperatorNorOwner(
+                caller,
+                operator(),
+                owner()
+            );
+        }
+        _ssvNetwork.migrateClusterToETH{value: msg.value}(_operatorIds, _cluster);
     }
 
     /// @inheritdoc ISSVProxy
-    function withdrawAllSSVTokensToFactory() public onlyOperatorOrOwner {
-        uint256 balance = _ssvToken.balanceOf(address(this));
-        _ssvToken.transfer(address(_ssvProxyFactory), balance);
-    }
-
-    function withdrawFromSSVToFactory(
-        uint256 _tokenAmount,
-        uint64[] calldata _operatorIds,
-        ISSVNetwork.Cluster[] calldata _clusters
-    ) external {
-        withdrawFromSSV(_tokenAmount, _operatorIds, _clusters);
-        withdrawAllSSVTokensToFactory();
+    function withdrawETH(
+        address payable _to,
+        uint256 _amount
+    ) external onlyOperatorOrOwner {
+        (bool success, ) = _to.call{value: _amount}("");
+        if (!success) {
+            revert EthTransferFailed();
+        }
     }
 
     /// @inheritdoc ISSVProxy
@@ -286,15 +289,15 @@ contract SSVProxy is OwnableAssetRecover, ERC165, ISSVProxy {
     /// @param _cluster cluster value before the 1st validator registration
     /// @param _newIndex clusterIndex value after the 1st validator registration
     /// @param _currentNetworkFeeIndex currentNetworkFeeIndex from ssvSlot0
-    /// @param _tokenAmount amount of SSV tokens deposited along with the 1st validator registration
+    /// @param _ethAmount amount of ETH deposited along with the 1st validator registration
     /// @return balance updated balance after the 1st validator registration
     function _getBalance(
         ISSVNetwork.Cluster calldata _cluster,
         uint64 _newIndex,
         uint64 _currentNetworkFeeIndex,
-        uint256 _tokenAmount
+        uint256 _ethAmount
     ) private pure returns (uint256 balance) {
-        uint256 balanceBefore = _cluster.balance + _tokenAmount;
+        uint256 balanceBefore = _cluster.balance + _ethAmount;
 
         // see https://github.com/bloxapp/ssv-network/blob/1e61c35736578d4b03bacbff9da2128ad12a5620/contracts/libraries/ClusterLib.sol#L16
         uint64 networkFee = uint64(
@@ -340,7 +343,6 @@ contract SSVProxy is OwnableAssetRecover, ERC165, ISSVProxy {
             _pubkey,
             _operatorIds,
             _sharesData,
-            0,
             cluster
         );
     }

@@ -112,12 +112,13 @@ interface ISSVViews is ISSVNetworkCore {
     /// @notice Gets the balance of the cluster
     /// @param owner The owner address of the cluster
     /// @param operatorIds The IDs of the operators in the cluster
-    /// @return balance The balance of the cluster (SSV)
+    /// @return balance The balance of the cluster
+    /// @return ebBalance The ETH balance of the cluster
     function getBalance(
         address owner,
         uint64[] memory operatorIds,
         Cluster memory cluster
-    ) external view returns (uint256 balance);
+    ) external view returns (uint256 balance, uint256 ebBalance);
 
     /// @notice Gets the network fee
     /// @return networkFee The fee associated with the network (SSV)

@@ -41,13 +41,13 @@ struct SsvOperator {
 /// @member ssvOperators SSV operators for the cluster
 /// @member ssvValidators new SSV validators to be registered in the cluster
 /// @member cluster SSV cluster
-/// @member tokenAmount amount of ERC-20 SSV tokens for validator registration
+/// @member ethAmount amount of ETH for validator registration
 /// @member ssvSlot0 Slot # (uint256(keccak256("ssv.network.storage.protocol")) - 1) from SSVNetwork
 struct SsvPayload {
     SsvOperator[] ssvOperators;
     SsvValidator[] ssvValidators;
     ISSVNetworkCore.Cluster cluster;
-    uint256 tokenAmount;
+    uint256 ethAmount;
     bytes32 ssvSlot0;
 }
 

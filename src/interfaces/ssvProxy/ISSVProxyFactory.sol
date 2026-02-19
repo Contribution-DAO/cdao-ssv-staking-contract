@@ -34,10 +34,10 @@ interface ISSVProxyFactory is
     /// @param _referenceFeeManager new reference FeeManager address
     event ReferenceFeeManagerSet(address indexed _referenceFeeManager);
 
-    /// @notice Emits when a new value for maximum amount of SSV tokens per validator has been set
-    /// @param _maxSsvTokenAmountPerValidator new value for maximum amount of SSV tokens per validator
-    event MaxSsvTokenAmountPerValidatorSet(
-        uint112 _maxSsvTokenAmountPerValidator
+    /// @notice Emits when a new value for maximum amount of ETH per validator has been set
+    /// @param _maxEthAmountPerValidator new value for maximum amount of ETH per validator
+    event MaxEthAmountPerValidatorSet(
+        uint112 _maxEthAmountPerValidator
     );
 
     /// @notice Emits when a new reference SSVProxy has been set
@@ -100,14 +100,14 @@ interface ISSVProxyFactory is
     /// @param _actualEthValue actually sent ETH value
     error EthValueMustBe32TimesValidatorCount(uint256 _actualEthValue);
 
-    /// @notice Maximum amount of SSV tokens per validator must be >= 10^12 and <= 10^24
-    error MaxSsvTokenAmountPerValidatorOutOfRange();
+    /// @notice Maximum amount of ETH per validator must be >= 10^12 and <= 10^24
+    error MaxEthAmountPerValidatorOutOfRange();
 
-    /// @notice Maximum amount of SSV tokens per validator has not been set. Cannot do depositEthAndRegisterValidators without it.
-    error MaxSsvTokenAmountPerValidatorNotSet();
+    /// @notice Maximum amount of ETH per validator has not been set. Cannot do depositEthAndRegisterValidators without it.
+    error MaxEthAmountPerValidatorNotSet();
 
-    /// @notice Cannot use token amount per validator larger than Maximum amount of SSV tokens per validator.
-    error MaxSsvTokenAmountPerValidatorExceeded();
+    /// @notice Cannot use ETH amount per validator larger than maximum amount of ETH per validator.
+    error MaxEthAmountPerValidatorExceeded();
 
     /// @notice Should pass at least 1 selector
     error CannotSetZeroSelectors();
@@ -129,10 +129,13 @@ interface ISSVProxyFactory is
     /// @param _feeManagerInstance client FeeManager instance
     error SSVProxyDoesNotExist(address _feeManagerInstance);
 
-    /// @notice Set Maximum amount of SSV tokens per validator that is allowed for client to deposit during `depositEthAndRegisterValidators`
-    /// @param _maxSsvTokenAmountPerValidator Maximum amount of SSV tokens per validator
-    function setMaxSsvTokenAmountPerValidator(
-        uint112 _maxSsvTokenAmountPerValidator
+    /// @notice ETH transfer failed
+    error EthTransferFailed();
+
+    /// @notice Set Maximum amount of ETH per validator that is allowed for client to deposit during `depositEthAndRegisterValidators`
+    /// @param _maxEthAmountPerValidator Maximum amount of ETH per validator
+    function setMaxEthAmountPerValidator(
+        uint112 _maxEthAmountPerValidator
     ) external;
 
     /// @notice Set template to be used for new SSVProxy instances
@@ -235,7 +238,7 @@ interface ISSVProxyFactory is
         );
 
     /// @notice Send ETH to ETH Deposit DepositContract on behalf of the client and register validators with SSV (up to 60, calldata size is the limit)
-    /// @dev Callable by Operator only.
+    /// @dev Callable by Operator only. Payable to send ETH for SSV cluster funding.
     /// @param _eth2WithdrawalCredentials ETH Deposit withdrawal credentials
     /// @param _ethAmountPerValidatorInWei amount of ETH to deposit per 1 validator (should be >= 32 and <= 2048)
     /// @param _feeManagerInstance user FeeManager instance that determines the terms of staking service
@@ -244,7 +247,6 @@ interface ISSVProxyFactory is
     /// @param _operatorIds SSV operator IDs
     /// @param _publicKeys validator public keys
     /// @param _sharesData encrypted shares related to the validator
-    /// @param _amount amount of ERC-20 SSV tokens to deposit into the cluster
     /// @param _cluster SSV cluster
     /// @return ssvProxy client SSVProxy instance that became the SSV cluster owner
     function makeBeaconDepositsAndRegisterValidators(
@@ -256,22 +258,29 @@ interface ISSVProxyFactory is
         uint64[] calldata _operatorIds,
         bytes[] calldata _publicKeys,
         bytes[] calldata _sharesData,
-        uint256 _amount,
         ISSVNetwork.Cluster calldata _cluster
-    ) external returns (address ssvProxy);
+    ) external payable returns (address ssvProxy);
 
-    /// @notice Deposit SSV tokens from SSVProxyFactory to SSV cluster
-    /// @dev Can only be called by SSVProxyFactory owner
+    /// @notice Deposit ETH from SSVProxyFactory to SSV cluster
+    /// @dev Can only be called by SSVProxyFactory owner. Payable.
     /// @param _clusterOwner SSV cluster owner (usually, SSVProxy instance)
-    /// @param _tokenAmount SSV token amount to be deposited
     /// @param _operatorIds SSV operator IDs
     /// @param _cluster SSV cluster
     function depositToSSV(
         address _clusterOwner,
-        uint256 _tokenAmount,
         uint64[] calldata _operatorIds,
         ISSVNetwork.Cluster calldata _cluster
-    ) external;
+    ) external payable;
+
+    /// @notice Migrate a cluster from SSV token payments to ETH payments
+    /// @param _ssvProxy SSVProxy instance address (cluster owner)
+    /// @param _operatorIds SSV operator IDs
+    /// @param _cluster SSV cluster
+    function migrateClusterToETH(
+        address _ssvProxy,
+        uint64[] calldata _operatorIds,
+        ISSVNetwork.Cluster calldata _cluster
+    ) external payable;
 
     /// @notice Returns the FeeManagerFactory address
     /// @return FeeManagerFactory address
@@ -316,7 +325,7 @@ interface ISSVProxyFactory is
     /// @return a template set by Operator to be used for new SSVProxy instances
     function getReferenceSSVProxy() external view returns (address);
 
-    /// @notice Returns the maximum amount of SSV tokens per validator that is allowed for client to deposit during `depositEthAndRegisterValidators`
-    /// @return maximum amount of SSV tokens per validator
-    function getMaxSsvTokenAmountPerValidator() external view returns (uint112);
+    /// @notice Returns the maximum amount of ETH per validator that is allowed for client to deposit during `depositEthAndRegisterValidators`
+    /// @return maximum amount of ETH per validator
+    function getMaxEthAmountPerValidator() external view returns (uint112);
 }

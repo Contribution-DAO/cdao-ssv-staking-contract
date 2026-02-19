@@ -46,7 +46,6 @@ task("verify:all", "Verify all deployed contracts").setAction(
         networkConfig.nativeDeposit,
         networkConfig.ssvNetwork,
         networkConfig.ssvViews,
-        networkConfig.ssvToken,
       ],
     })
 
@@ -56,7 +55,6 @@ task("verify:all", "Verify all deployed contracts").setAction(
       constructorArguments: [
         deployment.SSVProxyFactory,
         networkConfig.ssvNetwork,
-        networkConfig.ssvToken,
       ],
     })
 

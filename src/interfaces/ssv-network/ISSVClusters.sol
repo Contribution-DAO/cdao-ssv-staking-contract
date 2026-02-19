@@ -3,35 +3,31 @@ pragma solidity 0.8.24;
 
 import {ISSVNetworkCore} from "./ISSVNetworkCore.sol";
 
-/// @dev https://github.com/ssvlabs/ssv-network/blob/2e90a0cc44ae2645ea06ef9c0fcd2369bbf3c277/contracts/interfaces/ISSVClusters.sol
+/// @dev Updated for SSV Network ETH-denominated payments
 interface ISSVClusters is ISSVNetworkCore {
     /// @notice Registers a new validator on the SSV Network
     /// @param publicKey The public key of the new validator
     /// @param operatorIds Array of IDs of operators managing this validator
     /// @param sharesData Encrypted shares related to the new validator
-    /// @param amount Amount of SSV tokens to be deposited
     /// @param cluster Cluster to be used with the new validator
     function registerValidator(
         bytes calldata publicKey,
         uint64[] memory operatorIds,
         bytes calldata sharesData,
-        uint256 amount,
         Cluster memory cluster
-    ) external;
+    ) external payable;
 
     /// @notice Registers new validators on the SSV Network
     /// @param publicKeys The public keys of the new validators
     /// @param operatorIds Array of IDs of operators managing this validator
     /// @param sharesData Encrypted shares related to the new validators
-    /// @param amount Amount of SSV tokens to be deposited
     /// @param cluster Cluster to be used with the new validator
     function bulkRegisterValidator(
         bytes[] calldata publicKeys,
         uint64[] memory operatorIds,
         bytes[] calldata sharesData,
-        uint256 amount,
         Cluster memory cluster
-    ) external;
+    ) external payable;
 
     /// @notice Removes an existing validator from the SSV Network
     /// @param publicKey The public key of the validator to be removed
@@ -62,24 +58,22 @@ interface ISSVClusters is ISSVNetworkCore {
 
     /// @notice Reactivates a cluster
     /// @param operatorIds Array of IDs of operators managing the cluster
-    /// @param amount Amount of SSV tokens to be deposited for reactivation
     /// @param cluster Cluster to be reactivated
-    function reactivate(uint64[] memory operatorIds, uint256 amount, Cluster memory cluster) external;
+    function reactivate(uint64[] memory operatorIds, Cluster memory cluster) external payable;
 
     /******************************/
     /* Balance External Functions */
     /******************************/
 
-    /// @notice Deposits tokens into a cluster
+    /// @notice Deposits ETH into a cluster
     /// @param owner The owner of the cluster
     /// @param operatorIds Array of IDs of operators managing the cluster
-    /// @param amount Amount of SSV tokens to be deposited
     /// @param cluster Cluster where the deposit will be made
-    function deposit(address owner, uint64[] memory operatorIds, uint256 amount, Cluster memory cluster) external;
+    function deposit(address owner, uint64[] memory operatorIds, Cluster memory cluster) external payable;
 
     /// @notice Withdraws tokens from a cluster
     /// @param operatorIds Array of IDs of operators managing the cluster
-    /// @param tokenAmount Amount of SSV tokens to be withdrawn
+    /// @param tokenAmount Amount of tokens to be withdrawn
     /// @param cluster Cluster where the withdrawal will be made
     function withdraw(uint64[] memory operatorIds, uint256 tokenAmount, Cluster memory cluster) external;
 
@@ -92,6 +86,11 @@ interface ISSVClusters is ISSVNetworkCore {
     /// @param publicKeys The public keys of the validators to be exited
     /// @param operatorIds Array of IDs of operators managing the validators
     function bulkExitValidator(bytes[] calldata publicKeys, uint64[] calldata operatorIds) external;
+
+    /// @notice Migrates an SSV-token cluster to ETH payments
+    /// @param operatorIds Array of IDs of operators managing the cluster
+    /// @param cluster Cluster to be migrated
+    function migrateClusterToETH(uint64[] memory operatorIds, Cluster memory cluster) external payable;
 
     /**
      * @dev Emitted when the validator has been added.
@@ -139,8 +138,8 @@ interface ISSVClusters is ISSVNetworkCore {
      * @dev Emitted when tokens are deposited into a cluster.
      * @param owner The owner of the cluster.
      * @param operatorIds The operator IDs managing the cluster.
-     * @param value The amount of SSV tokens deposited.
-     * @param cluster The cluster into which SSV tokens were deposited.
+     * @param value The amount deposited.
+     * @param cluster The cluster into which funds were deposited.
      */
     event ClusterDeposited(address indexed owner, uint64[] operatorIds, uint256 value, Cluster cluster);
 

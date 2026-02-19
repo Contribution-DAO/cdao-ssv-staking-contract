@@ -37,12 +37,10 @@ task("deploy:all", "Deploy CDAO Staking Smart Contracts").setAction(
       nativeDeposit: config.nativeDeposit,
       ssvNetwork: config.ssvNetwork,
       ssvViews: config.ssvViews,
-      ssvToken: config.ssvToken,
     })
     const ssvProxyAddr = await hre.run("deploy:ssvProxy", {
       ssvProxyFactoryAddr,
       ssvNetwork: config.ssvNetwork,
-      ssvToken: config.ssvToken,
     })
     await hre.run("task:setup", {
       ssvProxyFactoryAddr,
@@ -52,7 +50,7 @@ task("deploy:all", "Deploy CDAO Staking Smart Contracts").setAction(
       maxSSVOperator: config.maxSSVOperator,
       operators: config.operators,
       exchangeRate: config.exchangeRate,
-      maxSSVTokenPerValidator: config.maxSSVTokenPerValidator,
+      maxEthPerValidator: config.maxEthPerValidator,
       operatorsOwner: config.operatorsOwner,
     })
 
@@ -179,7 +177,6 @@ subtask("deploy:ssvProxyFactory", "Deploys SSV Proxy Factory")
   )
   .addParam("ssvNetwork", "Address of SSV Network Contract", null, types.string)
   .addParam("ssvViews", "Address of SSV Views Contract", null, types.string)
-  .addParam("ssvToken", "Address of SSV Token Contract", null, types.string)
   .setAction(
     async (
       {
@@ -189,7 +186,6 @@ subtask("deploy:ssvProxyFactory", "Deploys SSV Proxy Factory")
         nativeDeposit,
         ssvNetwork,
         ssvViews,
-        ssvToken,
       },
       hre
     ) => {
@@ -203,8 +199,7 @@ subtask("deploy:ssvProxyFactory", "Deploys SSV Proxy Factory")
         refFee,
         nativeDeposit,
         ssvNetwork,
-        ssvViews,
-        ssvToken
+        ssvViews
       )
 
       console.log("Parameters to verify SSVProxyFactory:")
@@ -214,8 +209,7 @@ subtask("deploy:ssvProxyFactory", "Deploys SSV Proxy Factory")
         refFee,
         nativeDeposit,
         ssvNetwork,
-        ssvViews,
-        ssvToken
+        ssvViews
       )
 
       await ssvProxyFactory.waitForDeployment()
@@ -239,14 +233,12 @@ subtask("deploy:ssvProxy", "Deploys SsvProxy Contract")
     types.string
   )
   .addParam("ssvNetwork", "Address of SSVNetwork Contract", null, types.string)
-  .addParam("ssvToken", "Address of SSVToken Contract", null, types.string)
-  .setAction(async ({ ssvProxyFactoryAddr, ssvNetwork, ssvToken }, hre) => {
+  .setAction(async ({ ssvProxyFactoryAddr, ssvNetwork }, hre) => {
     console.log("========= Deploying SSVProxy ===========")
     const SSVProxy = await hre.ethers.getContractFactory("SSVProxy")
     const referenceSsvProxy = await SSVProxy.deploy(
       ssvProxyFactoryAddr,
-      ssvNetwork,
-      ssvToken
+      ssvNetwork
     )
 
     await referenceSsvProxy.waitForDeployment()
@@ -291,8 +283,8 @@ subtask("task:setup", "Setup SSVProxyFactory Contract")
     types.bigint
   )
   .addParam(
-    "maxSSVTokenPerValidator",
-    "MaxSSVTokenPerValidator of SSV",
+    "maxEthPerValidator",
+    "MaxEthPerValidator for SSV cluster funding",
     null,
     types.bigint
   )
@@ -306,7 +298,7 @@ subtask("task:setup", "Setup SSVProxyFactory Contract")
         maxSSVOperator,
         operators,
         exchangeRate,
-        maxSSVTokenPerValidator,
+        maxEthPerValidator,
         operatorsOwner,
       },
       hre
@@ -343,12 +335,12 @@ subtask("task:setup", "Setup SSVProxyFactory Contract")
       )
       await feeManagerFactory.setSSVProxyFactory(ssvProxyFactoryAddr)
 
-      // Set Maximum SSV Token per Validator
+      // Set Maximum ETH per Validator
       console.log(
-        "========= Setting Maximum SSV Token per Validator ==========="
+        "========= Setting Maximum ETH per Validator ==========="
       )
-      await ssvProxyFactory.setMaxSsvTokenAmountPerValidator(
-        maxSSVTokenPerValidator
+      await ssvProxyFactory.setMaxEthAmountPerValidator(
+        maxEthPerValidator
       )
 
       console.log("Parameters to verify:")

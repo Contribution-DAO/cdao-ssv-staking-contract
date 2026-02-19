@@ -40,9 +40,6 @@ contract SSVProxyFactory is
     /// @notice FeeManagerFactory
     IFeeManagerFactory private immutable _feeManagerFactory;
 
-    /// @notice SSV ERC-20 token
-    IERC20 public immutable _ssvToken;
-
     /// @notice SSVNetworkViews
     ISSVViews public immutable _ssvViews;
 
@@ -78,8 +75,8 @@ contract SSVProxyFactory is
     /// @notice a mapping to check if a certain selector (function signature) is allowed for a operator to call on SSVNetwork via SSVProxy.
     mapping(bytes4 => bool) private _operatorSelectors;
 
-    /// @notice Maximum amount of SSV tokens per validator that is allowed for client to deposit during `depositEthAndRegisterValidators`
-    uint112 public _maxSsvTokenAmountPerValidator;
+    /// @notice Maximum amount of ETH per validator that is allowed for client to deposit during `depositEthAndRegisterValidators`
+    uint112 public _maxEthAmountPerValidator;
 
     /// @notice a mapping of (User address → AddEthData[])
     mapping(address => AddEthData[]) private _addEthData;
@@ -91,15 +88,13 @@ contract SSVProxyFactory is
     /// @param depositContract_ native deposit contract
     /// @param ssvNetwork_ address of SSV Network
     /// @param ssvViews_ address of SSV Views
-    /// @param ssvToken_ address of SSV Token
     constructor(
         address gatewayEth2Deposit_,
         address feeManagerFactory_,
         address referenceFeeManager_,
         address depositContract_,
         address ssvNetwork_,
-        address ssvViews_,
-        address ssvToken_
+        address ssvViews_
     ) {
         if (
             !ERC165Checker.supportsInterface(
@@ -135,28 +130,27 @@ contract SSVProxyFactory is
 
         _depositContract = IDepositContract(depositContract_);
 
-        _ssvToken = IERC20(ssvToken_);
-
         _ssvViews = ISSVViews(ssvViews_);
 
         _ssvNetwork = ISSVNetwork(ssvNetwork_);
-
-        _ssvToken.approve(address(_ssvNetwork), type(uint256).max);
     }
 
+    /// @notice Accept ETH deposits
+    receive() external payable {}
+
     /// @inheritdoc ISSVProxyFactory
-    function setMaxSsvTokenAmountPerValidator(
-        uint112 maxSsvTokenAmountPerValidator_
+    function setMaxEthAmountPerValidator(
+        uint112 maxEthAmountPerValidator_
     ) external onlyOwner {
         if (
-            maxSsvTokenAmountPerValidator_ < 10 ** 12 ||
-            maxSsvTokenAmountPerValidator_ > 10 ** 24
+            maxEthAmountPerValidator_ < 10 ** 12 ||
+            maxEthAmountPerValidator_ > 10 ** 24
         ) {
-            revert MaxSsvTokenAmountPerValidatorOutOfRange();
+            revert MaxEthAmountPerValidatorOutOfRange();
         }
 
-        _maxSsvTokenAmountPerValidator = maxSsvTokenAmountPerValidator_;
-        emit MaxSsvTokenAmountPerValidatorSet(maxSsvTokenAmountPerValidator_);
+        _maxEthAmountPerValidator = maxEthAmountPerValidator_;
+        emit MaxEthAmountPerValidatorSet(maxEthAmountPerValidator_);
     }
 
     /// @inheritdoc ISSVProxyFactory
@@ -172,7 +166,7 @@ contract SSVProxyFactory is
             revert NotSSVProxy(referenceSSVProxy_);
         }
 
-        _referenceSSVProxy = SSVProxy(referenceSSVProxy_);
+        _referenceSSVProxy = SSVProxy(payable(referenceSSVProxy_));
         emit ReferenceSSVProxySet(referenceSSVProxy_);
     }
 
@@ -377,16 +371,15 @@ contract SSVProxyFactory is
         uint64[] calldata _operatorIds,
         bytes[] calldata _publicKeys,
         bytes[] calldata _sharesData,
-        uint256 _amount,
         ISSVNetwork.Cluster calldata _cluster
-    ) external onlyOperatorOrOwner returns (address ssvProxy) {
+    ) external payable onlyOperatorOrOwner returns (address ssvProxy) {
         ssvProxy = predictSSVProxyAddress(_feeManagerInstance);
         if (ssvProxy.code.length == 0) {
             revert SSVProxyDoesNotExist(_feeManagerInstance);
         }
 
         uint256 validatorCount = _publicKeys.length;
-        _checkTokenAmount(_amount, validatorCount);
+        _checkEthAmount(msg.value, validatorCount);
 
         // Lengths matching check for public keys, signatures, and deposit data roots
         // is done by GatewayEth2Deposit
@@ -401,13 +394,10 @@ contract SSVProxyFactory is
             _depositData.depositDataRoots
         );
 
-        _ssvToken.transfer(address(ssvProxy), _amount);
-
-        SSVProxy(ssvProxy).bulkRegisterValidators(
+        SSVProxy(payable(ssvProxy)).bulkRegisterValidators{value: msg.value}(
             _publicKeys,
             _operatorIds,
             _sharesData,
-            _amount,
             _cluster
         );
 
@@ -417,30 +407,40 @@ contract SSVProxyFactory is
     /// @inheritdoc ISSVProxyFactory
     function depositToSSV(
         address _clusterOwner,
-        uint256 _tokenAmount,
         uint64[] calldata _operatorIds,
         ISSVNetwork.Cluster calldata _cluster
-    ) external onlyOwner {
-        _ssvNetwork.deposit(
+    ) external payable onlyOwner {
+        _ssvNetwork.deposit{value: msg.value}(
             _clusterOwner,
             _operatorIds,
-            _tokenAmount,
             _cluster
         );
     }
 
-    function _checkTokenAmount(
-        uint256 _tokenAmount,
+    /// @inheritdoc ISSVProxyFactory
+    function migrateClusterToETH(
+        address _ssvProxy,
+        uint64[] calldata _operatorIds,
+        ISSVNetwork.Cluster calldata _cluster
+    ) external payable onlyOperatorOrOwner {
+        SSVProxy(payable(_ssvProxy)).migrateClusterToETH{value: msg.value}(
+            _operatorIds,
+            _cluster
+        );
+    }
+
+    function _checkEthAmount(
+        uint256 _ethAmount,
         uint256 _validatorCount
     ) private view {
-        uint112 maxSsvTokenAmountPerValidator = _maxSsvTokenAmountPerValidator;
+        uint112 maxEthAmountPerValidator = _maxEthAmountPerValidator;
 
-        if (maxSsvTokenAmountPerValidator == 0) {
-            revert MaxSsvTokenAmountPerValidatorNotSet();
+        if (maxEthAmountPerValidator == 0) {
+            revert MaxEthAmountPerValidatorNotSet();
         }
 
-        if (_tokenAmount > maxSsvTokenAmountPerValidator * _validatorCount) {
-            revert MaxSsvTokenAmountPerValidatorExceeded();
+        if (_ethAmount > maxEthAmountPerValidator * _validatorCount) {
+            revert MaxEthAmountPerValidatorExceeded();
         }
     }
 
@@ -469,7 +469,7 @@ contract SSVProxyFactory is
             );
 
             // set the client address to the cloned SSVProxy instance
-            SSVProxy(ssvProxyInstance).initialize(_feeManagerInstance);
+            SSVProxy(payable(ssvProxyInstance)).initialize(_feeManagerInstance);
 
             address client = IFeeManager(_feeManagerInstance).client();
 
@@ -572,12 +572,12 @@ contract SSVProxyFactory is
     }
 
     /// @inheritdoc ISSVProxyFactory
-    function getMaxSsvTokenAmountPerValidator()
+    function getMaxEthAmountPerValidator()
         external
         view
         returns (uint112)
     {
-        return _maxSsvTokenAmountPerValidator;
+        return _maxEthAmountPerValidator;
     }
 
     function getAddEthData(
