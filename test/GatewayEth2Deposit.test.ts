@@ -2,7 +2,7 @@ import { expect } from "chai"
 import { ethers } from "hardhat"
 import { loadFixture } from "@nomicfoundation/hardhat-toolbox/network-helpers"
 import { deployContractsFixture } from "./fixtures/deployContracts"
-import { FeeManagerFactory, GatewayEth2Deposit } from "../typechain-types"
+import { FeeManagerFactory, GatewayEth2Deposit, SSVProxyFactory } from "../typechain-types"
 import { nativeDeposit } from "./constants"
 import { addressToWithdrawalCredentials } from "./helpers"
 import { RewardFeeManager } from "../typechain-types"
@@ -10,6 +10,7 @@ import { RewardFeeManager } from "../typechain-types"
 describe("GatewayEth2Deposit", function () {
   let gatewayEth2Deposit: GatewayEth2Deposit
   let feeManagerFactory: FeeManagerFactory
+  let ssvProxyFactory: SSVProxyFactory
   let rewardFeeManager: RewardFeeManager
   let owner: any
   let client: any
@@ -42,6 +43,7 @@ describe("GatewayEth2Deposit", function () {
     const fixture = await loadFixture(deployContractsFixture)
     gatewayEth2Deposit = fixture.gatewayEth2Deposit
     feeManagerFactory = fixture.feeManagerFactory
+    ssvProxyFactory = fixture.ssvProxyFactory
     rewardFeeManager = fixture.rewardFeeManager
     owner = fixture.owner
     client = fixture.client
@@ -104,17 +106,14 @@ describe("GatewayEth2Deposit", function () {
       const {
         withdrawalCredentials,
         ethAmountPerValidator,
-        feeManagerAddress,
         clientConfig,
         referrerConfig,
       } = await setupAddEthParams()
 
       await expect(
-        gatewayEth2Deposit.addEth(
+        ssvProxyFactory.connect(operator).addEth(
           withdrawalCredentials,
           ethAmountPerValidator,
-          feeManagerAddress,
-          client.address,
           clientConfig,
           referrerConfig,
           "0x",
@@ -126,7 +125,6 @@ describe("GatewayEth2Deposit", function () {
     it("Should revert with incorrect withdrawal credentials prefix", async function () {
       const {
         ethAmountPerValidator,
-        feeManagerAddress,
         clientConfig,
         referrerConfig,
       } = await setupAddEthParams()
@@ -137,11 +135,9 @@ describe("GatewayEth2Deposit", function () {
       await gatewayEth2Deposit.enableEip7251()
 
       await expect(
-        gatewayEth2Deposit.addEth(
+        ssvProxyFactory.connect(operator).addEth(
           invalidWithdrawalCredentials,
           ethAmountPerValidator,
-          feeManagerAddress,
-          client.address,
           clientConfig,
           referrerConfig,
           "0x",
@@ -157,16 +153,13 @@ describe("GatewayEth2Deposit", function () {
       const {
         withdrawalCredentials,
         ethAmountPerValidator,
-        feeManagerAddress,
         clientConfig,
         referrerConfig,
       } = await setupAddEthParams()
 
-      const tx = await gatewayEth2Deposit.addEth(
+      const tx = await ssvProxyFactory.connect(operator).addEth(
         withdrawalCredentials,
         ethAmountPerValidator,
-        feeManagerAddress,
-        client.address,
         clientConfig,
         referrerConfig,
         "0x",
@@ -179,7 +172,6 @@ describe("GatewayEth2Deposit", function () {
     it("Should revert when EIP-7251 not enabled and using non-standard amount", async function () {
       const {
         withdrawalCredentials,
-        feeManagerAddress,
         clientConfig,
         referrerConfig,
       } = await setupAddEthParams()
@@ -187,11 +179,9 @@ describe("GatewayEth2Deposit", function () {
       const nonStandardAmount = ethers.parseEther("33")
 
       await expect(
-        gatewayEth2Deposit.addEth(
+        ssvProxyFactory.connect(operator).addEth(
           withdrawalCredentials,
           nonStandardAmount,
-          feeManagerAddress,
-          client.address,
           clientConfig,
           referrerConfig,
           "0x",
@@ -206,7 +196,6 @@ describe("GatewayEth2Deposit", function () {
     it("Should revert when withdrawal credentials bytes not zero", async function () {
       const {
         ethAmountPerValidator,
-        feeManagerAddress,
         clientConfig,
         referrerConfig,
       } = await setupAddEthParams()
@@ -218,11 +207,9 @@ describe("GatewayEth2Deposit", function () {
       const invalidWithdrawalCredentials = ethers.hexlify(nonZeroBytes)
 
       await expect(
-        gatewayEth2Deposit.addEth(
+        ssvProxyFactory.connect(operator).addEth(
           invalidWithdrawalCredentials,
           ethAmountPerValidator,
-          feeManagerAddress,
-          client.address,
           clientConfig,
           referrerConfig,
           "0x",
@@ -237,7 +224,6 @@ describe("GatewayEth2Deposit", function () {
     it("Should revert when eth amount per validator is out of range", async function () {
       const {
         withdrawalCredentials,
-        feeManagerAddress,
         clientConfig,
         referrerConfig,
       } = await setupAddEthParams()
@@ -246,11 +232,9 @@ describe("GatewayEth2Deposit", function () {
 
       const tooSmallAmount = ethers.parseEther("31")
       await expect(
-        gatewayEth2Deposit.addEth(
+        ssvProxyFactory.connect(operator).addEth(
           withdrawalCredentials,
           tooSmallAmount,
-          feeManagerAddress,
-          client.address,
           clientConfig,
           referrerConfig,
           "0x",
@@ -263,11 +247,9 @@ describe("GatewayEth2Deposit", function () {
 
       const tooLargeAmount = ethers.parseEther("2049")
       await expect(
-        gatewayEth2Deposit.addEth(
+        ssvProxyFactory.connect(operator).addEth(
           withdrawalCredentials,
           tooLargeAmount,
-          feeManagerAddress,
-          client.address,
           clientConfig,
           referrerConfig,
           "0x",
@@ -283,17 +265,14 @@ describe("GatewayEth2Deposit", function () {
       const {
         withdrawalCredentials,
         ethAmountPerValidator,
-        feeManagerAddress,
         clientConfig,
         referrerConfig,
       } = await setupAddEthParams()
 
       // First deposit
-      await gatewayEth2Deposit.addEth(
+      await ssvProxyFactory.connect(operator).addEth(
         withdrawalCredentials,
         ethAmountPerValidator,
-        feeManagerAddress,
-        client.address,
         clientConfig,
         referrerConfig,
         "0x",
@@ -302,11 +281,9 @@ describe("GatewayEth2Deposit", function () {
 
       // Second deposit
       await expect(
-        gatewayEth2Deposit.addEth(
+        ssvProxyFactory.connect(operator).addEth(
           withdrawalCredentials,
           ethAmountPerValidator,
-          feeManagerAddress,
-          client.address,
           clientConfig,
           referrerConfig,
           "0x",
@@ -342,11 +319,9 @@ describe("GatewayEth2Deposit", function () {
         referrerConfig,
       } = await setupAddEthParams()
 
-      await gatewayEth2Deposit.addEth(
+      await ssvProxyFactory.connect(operator).addEth(
         withdrawalCredentials,
         ethAmountPerValidator,
-        feeManagerAddress,
-        client.address,
         clientConfig,
         referrerConfig,
         "0x",
@@ -354,13 +329,14 @@ describe("GatewayEth2Deposit", function () {
       )
 
       const depositId = await gatewayEth2Deposit[
-        "getDepositId(bytes32,uint96,address,(uint96,address),(uint96,address))"
+        "getDepositId(bytes32,uint96,address,(uint96,address),(uint96,address),address)"
       ](
         withdrawalCredentials,
         ethAmountPerValidator,
         feeManagerAddress,
         clientConfig,
-        referrerConfig
+        referrerConfig,
+        operator.address
       )
 
       const reason = "Test rejection reason"
@@ -385,11 +361,9 @@ describe("GatewayEth2Deposit", function () {
       } = await setupAddEthParams()
 
       // Add ETH first
-      await gatewayEth2Deposit.addEth(
+      await ssvProxyFactory.connect(operator).addEth(
         withdrawalCredentials,
         ethAmountPerValidator,
-        feeManagerAddress,
-        client.address,
         clientConfig,
         referrerConfig,
         "0x",
@@ -397,13 +371,14 @@ describe("GatewayEth2Deposit", function () {
       )
 
       const depositId = await gatewayEth2Deposit[
-        "getDepositId(bytes32,uint96,address,(uint96,address),(uint96,address))"
+        "getDepositId(bytes32,uint96,address,(uint96,address),(uint96,address),address)"
       ](
         withdrawalCredentials,
         ethAmountPerValidator,
         feeManagerAddress,
         clientConfig,
-        referrerConfig
+        referrerConfig,
+        operator.address
       )
 
       // Reject the service
@@ -425,48 +400,52 @@ describe("GatewayEth2Deposit", function () {
           .refund(
             withdrawalCredentials,
             ethAmountPerValidator,
-            clientFeeManagerAddress
+            clientFeeManagerAddress,
+            operator.address
           )
       ).to.emit(gatewayEth2Deposit, "Refund")
     })
   })
 
   describe("refund", function () {
-    let depositId: string
     let withdrawalCredentials: string
     let ethAmountPerValidator: bigint
-    let feeManagerAddress: string
+    let feeManagerInstanceAddress: string
 
     beforeEach(async () => {
       const setupParams = await setupAddEthParams()
       withdrawalCredentials = setupParams.withdrawalCredentials
       ethAmountPerValidator = setupParams.ethAmountPerValidator
-      feeManagerAddress = setupParams.feeManagerAddress
 
-      // Add ETH first
-      const addEthTx = await gatewayEth2Deposit.addEth(
+      // Add ETH through factory
+      await ssvProxyFactory.connect(operator).addEth(
         withdrawalCredentials,
         ethAmountPerValidator,
-        feeManagerAddress,
-        client.address,
         setupParams.clientConfig,
         setupParams.referrerConfig,
         "0x",
         { value: ethers.parseEther("32") }
       )
 
-      const receipt = await addEthTx.wait()
-      const event: any = receipt?.logs[0]
-      depositId = event?.args?.address
+      // Compute fee manager instance address
+      feeManagerInstanceAddress =
+        await feeManagerFactory.predictFeeManagerAddress(
+          setupParams.feeManagerAddress,
+          setupParams.clientConfig,
+          setupParams.referrerConfig
+        )
     })
 
     it("Should revert if called before expiration", async function () {
       await expect(
-        gatewayEth2Deposit.refund(
-          withdrawalCredentials,
-          ethAmountPerValidator,
-          feeManagerAddress
-        )
+        gatewayEth2Deposit
+          .connect(client)
+          .refund(
+            withdrawalCredentials,
+            ethAmountPerValidator,
+            feeManagerInstanceAddress,
+            operator.address
+          )
       ).to.be.reverted
     })
 
@@ -477,7 +456,8 @@ describe("GatewayEth2Deposit", function () {
           .refund(
             withdrawalCredentials,
             ethAmountPerValidator,
-            feeManagerAddress
+            feeManagerInstanceAddress,
+            operator.address
           )
       ).to.be.revertedWithCustomError(gatewayEth2Deposit, "CallerNotClient")
     })
@@ -491,19 +471,15 @@ describe("GatewayEth2Deposit", function () {
         referrerConfig,
       } = await setupAddEthParams()
 
-      // Add ETH first
-      await gatewayEth2Deposit
-        .connect(client)
-        .addEth(
-          withdrawalCredentials,
-          ethAmountPerValidator,
-          feeManagerAddress,
-          client.address,
-          clientConfig,
-          referrerConfig,
-          "0x",
-          { value: ethAmountPerValidator }
-        )
+      // Add ETH through factory
+      await ssvProxyFactory.connect(operator).addEth(
+        withdrawalCredentials,
+        ethAmountPerValidator,
+        clientConfig,
+        referrerConfig,
+        "0x",
+        { value: ethAmountPerValidator }
+      )
 
       // Increase time to pass expiration
       await ethers.provider.send("evm_increaseTime", [7 * 24 * 60 * 60]) // 7 days
@@ -522,7 +498,8 @@ describe("GatewayEth2Deposit", function () {
           .refund(
             withdrawalCredentials,
             ethAmountPerValidator,
-            clientFeeManagerAddress
+            clientFeeManagerAddress,
+            operator.address
           )
       ).to.emit(gatewayEth2Deposit, "Refund")
     })
@@ -536,26 +513,32 @@ describe("GatewayEth2Deposit", function () {
         referrerConfig,
       } = await setupAddEthParams()
 
-      // Add ETH first
-      await gatewayEth2Deposit.addEth(
+      // Add ETH through factory
+      await ssvProxyFactory.connect(operator).addEth(
         withdrawalCredentials,
         ethAmountPerValidator,
-        feeManagerAddress,
-        client.address,
         clientConfig,
         referrerConfig,
         "0x",
         { value: ethAmountPerValidator }
       )
 
-      // Try to refund without any deposit
+      const clientFeeManagerAddress =
+        await feeManagerFactory.predictFeeManagerAddress(
+          feeManagerAddress,
+          clientConfig,
+          referrerConfig
+        )
+
+      // Try to refund with wrong operator address -> different depositId -> amount=0
       await expect(
         gatewayEth2Deposit
           .connect(operator)
           .refund(
             withdrawalCredentials,
             ethAmountPerValidator,
-            feeManagerAddress
+            clientFeeManagerAddress,
+            otherAccount.address
           )
       ).to.be.revertedWithCustomError(gatewayEth2Deposit, "InsufficientBalance")
     })
@@ -571,12 +554,10 @@ describe("GatewayEth2Deposit", function () {
       withdrawalCredentials = setupParams.withdrawalCredentials
       ethAmountPerValidator = setupParams.ethAmountPerValidator
 
-      // Add ETH first
-      await gatewayEth2Deposit.addEth(
+      // Add ETH through factory
+      await ssvProxyFactory.connect(operator).addEth(
         withdrawalCredentials,
         ethAmountPerValidator,
-        await rewardFeeManager.getAddress(),
-        client.address,
         setupParams.clientConfig,
         setupParams.referrerConfig,
         "0x",
@@ -598,6 +579,7 @@ describe("GatewayEth2Deposit", function () {
             withdrawalCredentials,
             ethAmountPerValidator,
             feeManagerAddress,
+            operator.address,
             [],
             [],
             []
@@ -613,6 +595,7 @@ describe("GatewayEth2Deposit", function () {
             withdrawalCredentials,
             ethAmountPerValidator,
             feeManagerAddress,
+            operator.address,
             [],
             [],
             []
@@ -632,6 +615,7 @@ describe("GatewayEth2Deposit", function () {
             withdrawalCredentials,
             ethAmountPerValidator,
             feeManagerAddress,
+            operator.address,
             pubkeys,
             signatures,
             depositDataRoots
@@ -647,20 +631,16 @@ describe("GatewayEth2Deposit", function () {
     let depositId: string
     let withdrawalCredentials: string
     let ethAmountPerValidator: bigint
-    let feeManagerAddress: string
 
     beforeEach(async () => {
       const setupParams = await setupAddEthParams()
       withdrawalCredentials = setupParams.withdrawalCredentials
       ethAmountPerValidator = setupParams.ethAmountPerValidator
-      feeManagerAddress = setupParams.feeManagerAddress
 
-      // Add ETH first
-      await gatewayEth2Deposit.addEth(
+      // Add ETH through factory
+      await ssvProxyFactory.connect(operator).addEth(
         withdrawalCredentials,
         ethAmountPerValidator,
-        feeManagerAddress,
-        client.address,
         setupParams.clientConfig,
         setupParams.referrerConfig,
         "0x",
@@ -669,14 +649,14 @@ describe("GatewayEth2Deposit", function () {
 
       const clientFeeManagerAddress =
         await feeManagerFactory.predictFeeManagerAddress(
-          feeManagerAddress,
+          setupParams.feeManagerAddress,
           setupParams.clientConfig,
           setupParams.referrerConfig
         )
 
       depositId = await gatewayEth2Deposit[
-        "getDepositId(bytes32,uint96,address)"
-      ](withdrawalCredentials, ethAmountPerValidator, clientFeeManagerAddress)
+        "getDepositId(bytes32,uint96,address,address)"
+      ](withdrawalCredentials, ethAmountPerValidator, clientFeeManagerAddress, operator.address)
     })
 
     it("Should return correct total balance", async function () {
