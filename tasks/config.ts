@@ -3,10 +3,9 @@ import { parseEther, Address } from "viem"
 interface NetworkConfig {
   ssvNetwork: Address
   ssvViews: Address
-  ssvToken: Address
   nativeDeposit: Address
   maxSSVOperator: number
-  maxSSVTokenPerValidator: bigint
+  maxEthPerValidator: bigint
   exchangeRate: bigint
   operatorsOwner: string[]
   operators: { id: number; owner: string }[]
@@ -18,10 +17,9 @@ export const networkConfigs: { [key: string]: NetworkConfig } = {
   kurtosis: {
     ssvNetwork: "0x9f5eaC3d8e082f47631F1551F1343F23cd427162",
     ssvViews: "0x72bCbB3f339aF622c28a26488Eed9097a2977404",
-    ssvToken: "0x9f9F5Fd89ad648f2C000C954d8d9C87743243eC5",
     nativeDeposit: "0x4242424242424242424242424242424242424242",
     maxSSVOperator: 24,
-    maxSSVTokenPerValidator: parseEther("30"),
+    maxEthPerValidator: parseEther("1"),
     exchangeRate: 7539000000000000n,
     operatorsOwner: ["0x8943545177806ED17B9F23F0a21ee5948eCaa776"],
     operators: [
@@ -46,10 +44,9 @@ export const networkConfigs: { [key: string]: NetworkConfig } = {
   holesky: {
     ssvNetwork: "0x38A4794cCEd47d3baf7370CcC43B560D3a1beEFA", // Replace with actual Holesky addresses
     ssvViews: "0x352A18AEe90cdcd825d1E37d9939dCA86C00e281",
-    ssvToken: "0xad45A78180961079BFaeEe349704F411dfF947C6",
     nativeDeposit: "0x4242424242424242424242424242424242424242",
     maxSSVOperator: 24,
-    maxSSVTokenPerValidator: parseEther("30"),
+    maxEthPerValidator: parseEther("1"),
     exchangeRate: 7539000000000000n,
     operatorsOwner: ["0x6f289fEBe36C1d34F30bBc65998E47B74b0E9e6d"],
     operators: [
@@ -71,13 +68,39 @@ export const networkConfigs: { [key: string]: NetworkConfig } = {
       },
     ],
   },
+  hoodi: {
+    ssvNetwork: "0x58410Bef803ECd7E63B23664C586A6DB72DAf59c",
+    ssvViews: "0x5AdDb3f1529C5ec70D77400499eE4bbF328368fe",
+    nativeDeposit: "0x00000000219ab540356cBB839Cbe05303d7705Fa",
+    maxSSVOperator: 24,
+    maxEthPerValidator: parseEther("1"),
+    exchangeRate: 7539000000000000n,
+    operatorsOwner: ["0x5baCB7D77898b0F726103952616c4B56892a6D66"],
+    operators: [
+      {
+        id: 182,
+        owner: "0x5baCB7D77898b0F726103952616c4B56892a6D66",
+      },
+      {
+        id: 183,
+        owner: "0x5baCB7D77898b0F726103952616c4B56892a6D66",
+      },
+      {
+        id: 184,
+        owner: "0x5baCB7D77898b0F726103952616c4B56892a6D66",
+      },
+      {
+        id: 185,
+        owner: "0x5baCB7D77898b0F726103952616c4B56892a6D66",
+      },
+    ],
+  },
   mainnet: {
     ssvNetwork: "0x0", // Replace with actual mainnet addresses
     ssvViews: "0x0",
-    ssvToken: "0x0",
     nativeDeposit: "0x0",
     maxSSVOperator: 24,
-    maxSSVTokenPerValidator: parseEther("30"),
+    maxEthPerValidator: parseEther("1"),
     exchangeRate: 7539000000000000n,
     operatorsOwner: [],
     operators: [],
@@ -85,10 +108,9 @@ export const networkConfigs: { [key: string]: NetworkConfig } = {
   hardhat: {
     ssvNetwork: "0x38A4794cCEd47d3baf7370CcC43B560D3a1beEFA",
     ssvViews: "0x352A18AEe90cdcd825d1E37d9939dCA86C00e281",
-    ssvToken: "0xad45A78180961079BFaeEe349704F411dfF947C6",
     nativeDeposit: "0x4242424242424242424242424242424242424242",
     maxSSVOperator: 24,
-    maxSSVTokenPerValidator: parseEther("30"),
+    maxEthPerValidator: parseEther("1"),
     exchangeRate: 7539000000000000n,
     operatorsOwner: ["0x99fC13a5b46491D84494165FFaa540fFE7AB78D1"],
     operators: [

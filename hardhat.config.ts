@@ -1,6 +1,5 @@
 import "dotenv/config";
 import { HardhatUserConfig } from "hardhat/config";
-import { parseEther } from "viem";
 
 import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-foundry";
@@ -56,24 +55,16 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       allowUnlimitedContractSize: true,
-      forking: {
-        url: "https://holesky.drpc.org",
-        blockNumber: 2790017,
-        accounts: [
-          {
-            privateKey: process.env.DEPLOYER_SK,
-            balance: parseEther("1000"),
-          },
-          {
-            privateKey: process.env.OWNER_SK,
-            balance: parseEther("1000"),
-          },
-          {
-            privateKey: process.env.FEE_SK,
-            balance: parseEther("1000"),
-          },
-        ],
-      },
+      ...(process.env.FORK_HOODI === "true"
+        ? {
+            forking: {
+              url: process.env.HOODI_RPC_URL || "https://0xrpc.io/hoodi",
+              blockNumber: process.env.HOODI_FORK_BLOCK
+                ? parseInt(process.env.HOODI_FORK_BLOCK)
+                : undefined,
+            },
+          }
+        : {}),
     },
     holesky: {
       url: "https://holesky.drpc.org",

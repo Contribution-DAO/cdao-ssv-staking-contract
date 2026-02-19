@@ -9,6 +9,7 @@
   },
   "scripts": {
     "test:hardhat": "hardhat test --network hardhat",
+    "test:e2e": "FORK_HOODI=true npx hardhat test test/e2e/hoodi.e2e.test.ts --network hardhat",
     "test:coverage": "hardhat coverage"
   },
   "keywords": [],
