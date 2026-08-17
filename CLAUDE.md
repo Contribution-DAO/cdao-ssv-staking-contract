@@ -90,11 +90,11 @@ Tunables live in `src/constants/StakingConstants.sol` (`TIMEOUT`, `VALIDATORS_MA
 
 ### Deployment
 
-`deploy:all` uses signers `[deployer, owner, fee]` from the network's `accounts` array: the deployer deploys everything and ends up as owner of both factories; `fee` (index 2) is baked into the reference `RewardFeeManager` as the service recipient. Constructors run ERC165 `supportsInterface` checks on their dependencies, so the order is forced:
+`deploy:all` signs everything with `signers[0]`, which ends up owner of both factories; `signers[1]` is configured but unused by every task. The reference `RewardFeeManager`'s immutable service recipient comes from `config.feeRecipient` (validated with `isAddress`), not from a signer. Constructors run ERC165 `supportsInterface` checks on their dependencies, so the order is forced:
 
 1. `FeeManagerFactory(defaultClientBasisPoints)`
 2. `GatewayEth2Deposit(feeManagerFactory, nativeDeposit)`
-3. `RewardFeeManager(feeManagerFactory, fee)` — the reference impl
+3. `RewardFeeManager(feeManagerFactory, config.feeRecipient)` — the reference impl
 4. `SSVProxyFactory(gateway, feeManagerFactory, refFeeManager, nativeDeposit, ssvNetwork, ssvViews)`
 5. `SSVProxy(ssvProxyFactory, ssvNetwork)` — the reference impl
 6. `task:setup` — five wiring calls, one of which is `feeManagerFactory.changeOperator(ssvProxyFactory)`; that is **not** the human operator role
@@ -115,7 +115,7 @@ Per-network SSV/deposit-contract addresses, operator IDs, and limits are duplica
 - `test/constants/index.ts` — unit-test config
 - `test/e2e/constants/hoodi.ts` — fork-test config
 
-Deployer keys come from `.env` (`HOODI_DEPLOYER`/`HOODI_OWNER`/`HOODI_FEE`, `HOLESKY_*`, `ETHERSCAN_API_KEY`).
+Only signing keys live in `.env` (`HOODI_DEPLOYER`/`HOODI_OWNER`, `HOLESKY_*`, `ETHERSCAN_API_KEY`). The service fee recipient is `feeRecipient` in `tasks/config.ts` — an address, deliberately not a key, since nothing ever signs with it.
 
 ## Development Notes
 

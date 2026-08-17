@@ -15,9 +15,20 @@ task("deploy:all", "Deploy CDAO Staking Smart Contracts").setAction(
       throw new Error(`No configuration found for network: ${networkName}`)
     }
 
-    const [deployer, _, fee] = await hre.ethers.getSigners()
+    const [deployer] = await hre.ethers.getSigners()
     console.log(`Deploying contracts with the account:${deployer.address}`)
     console.log(`Network: ${networkName}`)
+
+    // Fee recipient is an address from config, never a signer: it is only read
+    // (as the reference RewardFeeManager's immutable service address) and never
+    // signs anything, so its private key has no business being on this machine.
+    const feeRecipient = config.feeRecipient
+    if (!hre.ethers.isAddress(feeRecipient)) {
+      throw new Error(
+        `Invalid feeRecipient for network ${networkName}: ${feeRecipient}`
+      )
+    }
+    console.log(`Fee recipient: ${feeRecipient}`)
 
     const feeManagerFactoryAddr = await hre.run("deploy:feeManagerFactory", {
       defaultClientBasisPoints,
@@ -28,7 +39,7 @@ task("deploy:all", "Deploy CDAO Staking Smart Contracts").setAction(
     })
     const refFeeAddr = await hre.run("deploy:refFee", {
       feeManagerFactoryAddr,
-      fee: fee.address,
+      fee: feeRecipient,
     })
     const ssvProxyFactoryAddr = await hre.run("deploy:ssvProxyFactory", {
       gatewayEth2DepositAddr,

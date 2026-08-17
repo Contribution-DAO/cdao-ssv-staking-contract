@@ -13,7 +13,9 @@ task("verify:all", "Verify all deployed contracts").setAction(
     }
 
     const deployment = await readDeployment(Number(network.chainId))
-    const [deployer, _, fee] = await hre.ethers.getSigners()
+    // Must match what deploy:all passed to the reference RewardFeeManager,
+    // otherwise Etherscan rejects the constructor args.
+    const feeRecipient = networkConfig.feeRecipient
 
     console.log("Verifying FeeManagerFactory...")
     await hre.run("verify:verify", {
@@ -33,7 +35,7 @@ task("verify:all", "Verify all deployed contracts").setAction(
     console.log("Verifying ReferenceFeeManager...")
     await hre.run("verify:verify", {
       address: deployment.ReferenceFeeManager,
-      constructorArguments: [deployment.FeeManagerFactory, fee.address],
+      constructorArguments: [deployment.FeeManagerFactory, feeRecipient],
     })
 
     console.log("Verifying SSVProxyFactory...")

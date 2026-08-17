@@ -69,29 +69,22 @@ const config: HardhatUserConfig = {
     holesky: {
       url: "https://holesky.drpc.org",
       chainId: 17000,
-      accounts: [
-        process.env.HOLESKY_DEPLOYER,
-        process.env.HOLESKY_OWNER,
-        process.env.HOLESKY_FEE,
-      ],
+      accounts: [process.env.HOLESKY_DEPLOYER, process.env.HOLESKY_OWNER],
     },
     kurtosis: {
       url: "http://15.235.214.56:8545/",
       chainId: 3151908,
-      accounts: [
-        process.env.HOLESKY_DEPLOYER,
-        process.env.HOLESKY_OWNER,
-        process.env.HOLESKY_FEE,
-      ],
+      accounts: [process.env.HOLESKY_DEPLOYER, process.env.HOLESKY_OWNER],
     },
     hoodi: {
       url: "https://0xrpc.io/hoodi",
       chainId: 560048,
-      accounts: [
-        process.env.HOODI_DEPLOYER,
-        process.env.HOODI_OWNER,
-        process.env.HOODI_FEE,
-      ],
+      accounts: [process.env.HOODI_DEPLOYER, process.env.HOODI_OWNER],
+    },
+    mainnet: {
+      url: "https://eth.drpc.org",
+      chainId: 1,
+      accounts: [process.env.DEPLOYER_SK]
     },
   },
   namedAccounts: {

@@ -20,7 +20,7 @@ Examples below use `hoodi`; substitute your network name.
 
 ```bash
 git submodule update --init --recursive   # forge-std, openzeppelin-contracts, ssv-network
-npm install                               # package-lock.json → npm, not pnpm
+npm install                               # package-lock.json is the tracked lockfile
 npx hardhat compile                       # only needed on a fresh clone — see below
 ```
 
@@ -43,11 +43,12 @@ Compile manually when:
 | Variable | Role |
 | --- | --- |
 | `HOODI_DEPLOYER` | `signers[0]` — deploys every contract, becomes **owner** of FeeManagerFactory and SSVProxyFactory |
-| `HOODI_OWNER` | `signers[1]` — not used by `deploy:all` |
-| `HOODI_FEE` | `signers[2]` — service fee recipient, baked into the reference `RewardFeeManager` constructor |
+| `HOODI_OWNER` | `signers[1]` — configured but unused by every task |
 | `ETHERSCAN_API_KEY` | contract verification |
 
-Use `HOLESKY_DEPLOYER` / `HOLESKY_OWNER` / `HOLESKY_FEE` for both `holesky` and `kurtosis`.
+Use `HOLESKY_DEPLOYER` / `HOLESKY_OWNER` for both `holesky` and `kurtosis`.
+
+The service fee recipient is **not** an env key. It's `feeRecipient` in `tasks/config.ts`, because it is only ever read — it never signs a transaction and never needs ETH — so its private key has no reason to exist on a deploy machine. That also lets it be a multisig or cold wallet, which could never be expressed as an `accounts` entry.
 
 The deployer key must hold enough ETH for five contract deployments plus five setup transactions.
 
@@ -61,6 +62,7 @@ Confirm the target network's entry in `tasks/config.ts`:
 | `ssvViews` | SSV Views contract |
 | `nativeDeposit` | Beacon deposit contract — mainnet/hoodi use `0x00000000219ab540356cBB839Cbe05303d7705Fa`; kurtosis/holesky entries use `0x4242...4242` |
 | `maxEthPerValidator` | Cap on ETH forwarded to SSV per validator. Must be within `[10**12, 10**24]` wei — the setter reverts `MaxEthAmountPerValidatorOutOfRange` outside that range, which fails `deploy:all` at setup call #5, *after* five contracts are already on-chain and *before* the addresses file is written. Verify this before deploying |
+| `feeRecipient` | Service fee recipient — an **address**, never a private key. Baked immutably into the reference `RewardFeeManager`; must be able to receive a zero-value ETH send or the constructor reverts `ServiceCannotReceiveEther` (`FeeManager.sol:77-80`). Test the exact address on a fork before a real deploy, especially for a multisig |
 | `maxSSVOperator`, `operators`, `operatorsOwner`, `exchangeRate` | Passed to `task:setup` but **ignored** — leftovers from the SSV-token era |
 
 ### Verify contract constants
