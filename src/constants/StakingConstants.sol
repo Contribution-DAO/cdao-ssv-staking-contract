@@ -18,7 +18,7 @@ uint256 constant MIN_DEPOSIT = 1 ether;
 
 /// @dev Lockup time to allow Services to make ETH Deposit deposits
 /// @dev If there is leftover ETH after this time, it can be refunded
-uint40 constant TIMEOUT = 1 days;
+uint40 constant TIMEOUT = 5 minutes;
 
 /// @dev Collateral size of 1 validator
 uint256 constant COLLATERAL = 32 ether;
