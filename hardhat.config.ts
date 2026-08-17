@@ -53,34 +53,34 @@ const config: HardhatUserConfig = {
     ],
   },
   networks: {
-    hardhat: {
-      allowUnlimitedContractSize: true,
-      ...(process.env.FORK_HOODI === "true"
-        ? {
-            forking: {
-              url: process.env.HOODI_RPC_URL || "https://0xrpc.io/hoodi",
-              blockNumber: process.env.HOODI_FORK_BLOCK
-                ? parseInt(process.env.HOODI_FORK_BLOCK)
-                : undefined,
-            },
-          }
-        : {}),
-    },
-    holesky: {
-      url: "https://holesky.drpc.org",
-      chainId: 17000,
-      accounts: [process.env.HOLESKY_DEPLOYER, process.env.HOLESKY_OWNER],
-    },
-    kurtosis: {
-      url: "http://15.235.214.56:8545/",
-      chainId: 3151908,
-      accounts: [process.env.HOLESKY_DEPLOYER, process.env.HOLESKY_OWNER],
-    },
-    hoodi: {
-      url: "https://0xrpc.io/hoodi",
-      chainId: 560048,
-      accounts: [process.env.HOODI_DEPLOYER, process.env.HOODI_OWNER],
-    },
+    // hardhat: {
+    //   allowUnlimitedContractSize: true,
+    //   ...(process.env.FORK_HOODI === "true"
+    //     ? {
+    //         forking: {
+    //           url: process.env.HOODI_RPC_URL || "https://0xrpc.io/hoodi",
+    //           blockNumber: process.env.HOODI_FORK_BLOCK
+    //             ? parseInt(process.env.HOODI_FORK_BLOCK)
+    //             : undefined,
+    //         },
+    //       }
+    //     : {}),
+    // },
+    // holesky: {
+    //   url: "https://holesky.drpc.org",
+    //   chainId: 17000,
+    //   accounts: [process.env.HOLESKY_DEPLOYER, process.env.HOLESKY_OWNER],
+    // },
+    // kurtosis: {
+    //   url: "http://15.235.214.56:8545/",
+    //   chainId: 3151908,
+    //   accounts: [process.env.HOLESKY_DEPLOYER, process.env.HOLESKY_OWNER],
+    // },
+    // hoodi: {
+    //   url: "https://0xrpc.io/hoodi",
+    //   chainId: 560048,
+    //   accounts: [process.env.HOODI_DEPLOYER, process.env.HOODI_OWNER],
+    // },
     mainnet: {
       url: "https://eth.drpc.org",
       chainId: 1,
