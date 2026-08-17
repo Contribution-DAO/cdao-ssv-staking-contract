@@ -1764,6 +1764,202 @@ describeOrSkip("E2E: Hoodi Fork", function () {
     })
   })
 
+  describe("Withdrawal credentials mismatch scenarios", () => {
+    // Helper: addEth with a custom withdrawal credentials address (separate from client)
+    async function addEthWithCustomWithdrawal(withdrawalAddress: string) {
+      const withdrawalCreds = withdrawalCredentialsBytes32(withdrawalAddress)
+
+      const clientConfig = {
+        recipient: client.address,
+        basisPoints: DEFAULT_CLIENT_BASIS_POINTS,
+      }
+      const referrerConfig = {
+        recipient: referrer.address,
+        basisPoints: 500n,
+      }
+
+      const tx = await ssvProxyFactory.connect(client).addEth(
+        withdrawalCreds,
+        ETH_PER_VALIDATOR,
+        clientConfig,
+        referrerConfig,
+        "0x",
+        { value: ETH_PER_VALIDATOR }
+      )
+      const receipt = await tx.wait()
+
+      const iface = ssvProxyFactory.interface
+      const depositEvent = receipt!.logs
+        .map((log: any) => {
+          try {
+            return iface.parseLog({ topics: log.topics, data: log.data })
+          } catch {
+            return null
+          }
+        })
+        .find((e: any) => e?.name === "EthForSsvStakingDeposited")
+
+      return {
+        withdrawalCreds,
+        clientConfig,
+        referrerConfig,
+        feeManagerInstance: depositEvent!.args._feeManagerInstance,
+        ssvProxy: depositEvent!.args._ssvProxy,
+        depositEvent,
+      }
+    }
+
+    it("should succeed when withdrawal creds use operator address and deposit data matches", async () => {
+      // addEth with operator's address as withdrawal creds, but client as recipient
+      const { withdrawalCreds, feeManagerInstance, ssvProxy, depositEvent } =
+        await addEthWithCustomWithdrawal(operator.address)
+
+      // Verify event shows client as recipient (EL rewards) while withdrawal creds point to operator (CL rewards)
+      expect(depositEvent!.args._clientAddress).to.equal(client.address)
+      expect(depositEvent!.args._eth2WithdrawalCredentials).to.equal(
+        withdrawalCreds
+      )
+
+      // Generate deposit data using operator.address (matches withdrawal creds)
+      const depositData = generateTestDepositData(operator.address)
+      const operatorIdsU64 = OPERATOR_IDS.map((id) => BigInt(id))
+      const ssvClusterFunding = ethers.parseEther("0.5")
+
+      // makeBeaconDepositsAndRegisterValidators with same withdrawal creds
+      const tx = await ssvProxyFactory
+        .connect(operator)
+        .makeBeaconDepositsAndRegisterValidators(
+          withdrawalCreds,
+          ETH_PER_VALIDATOR,
+          feeManagerInstance,
+          client.address, // _operatorAddress must match addEth's msg.sender
+          {
+            signatures: [depositData.signature],
+            depositDataRoots: [depositData.depositDataRoot],
+          },
+          operatorIdsU64,
+          [depositData.pubkey],
+          [MOCK_SHARES],
+          EMPTY_CLUSTER,
+          { value: ssvClusterFunding }
+        )
+      const receipt = await tx.wait()
+
+      // Verify RegistrationCompleted event
+      const iface = ssvProxyFactory.interface
+      const regEvent = receipt!.logs
+        .map((log: any) => {
+          try {
+            return iface.parseLog({ topics: log.topics, data: log.data })
+          } catch {
+            return null
+          }
+        })
+        .find((e: any) => e?.name === "RegistrationCompleted")
+
+      expect(regEvent).to.not.be.null
+      expect(regEvent!.args._proxy).to.equal(ssvProxy)
+
+      // Verify ValidatorAdded on SSV Network
+      const ssvNetworkContract = new ethers.Contract(
+        HOODI_SSV_NETWORK,
+        [
+          "event ValidatorAdded(address indexed owner, uint64[] operatorIds, bytes publicKey, bytes shares, tuple(uint32 validatorCount, uint64 networkFeeIndex, uint64 index, bool active, uint256 balance) cluster)",
+        ],
+        ethers.provider
+      )
+
+      const validatorAddedEvents = receipt!.logs
+        .filter(
+          (log: any) =>
+            log.address.toLowerCase() === HOODI_SSV_NETWORK.toLowerCase()
+        )
+        .map((log: any) => {
+          try {
+            return ssvNetworkContract.interface.parseLog({
+              topics: log.topics,
+              data: log.data,
+            })
+          } catch {
+            return null
+          }
+        })
+        .filter((e: any) => e?.name === "ValidatorAdded")
+
+      expect(validatorAddedEvents.length).to.be.greaterThan(0)
+      expect(validatorAddedEvents[0]!.args.owner).to.equal(ssvProxy)
+    })
+
+    it("should fail when deposit data was generated with different address than withdrawal creds", async () => {
+      // addEth with operator's address as withdrawal creds
+      const { withdrawalCreds, feeManagerInstance } =
+        await addEthWithCustomWithdrawal(operator.address)
+
+      // Generate deposit data with client.address (does NOT match operator's withdrawal creds)
+      const depositData = generateTestDepositData(client.address)
+      const operatorIdsU64 = OPERATOR_IDS.map((id) => BigInt(id))
+      const ssvClusterFunding = ethers.parseEther("0.5")
+
+      // Beacon DepositContract rejects because depositDataRoot doesn't match withdrawal credentials
+      await expect(
+        ssvProxyFactory
+          .connect(operator)
+          .makeBeaconDepositsAndRegisterValidators(
+            withdrawalCreds,
+            ETH_PER_VALIDATOR,
+            feeManagerInstance,
+            client.address,
+            {
+              signatures: [depositData.signature],
+              depositDataRoots: [depositData.depositDataRoot],
+            },
+            operatorIdsU64,
+            [depositData.pubkey],
+            [MOCK_SHARES],
+            EMPTY_CLUSTER,
+            { value: ssvClusterFunding }
+          )
+      ).to.be.reverted
+    })
+
+    it("should fail when makeBeacon uses different withdrawal creds than addEth", async () => {
+      // addEth with operator's address as withdrawal creds
+      const { feeManagerInstance } =
+        await addEthWithCustomWithdrawal(operator.address)
+
+      // Generate deposit data with client.address (for the different withdrawal creds)
+      const depositData = generateTestDepositData(client.address)
+      const operatorIdsU64 = OPERATOR_IDS.map((id) => BigInt(id))
+      const ssvClusterFunding = ethers.parseEther("0.5")
+
+      // Use client's withdrawal creds (different from addEth's operator creds)
+      // This produces a different depositId, so GatewayEth2Deposit finds zero amount → EtherValueError
+      const differentWithdrawalCreds = withdrawalCredentialsBytes32(
+        client.address
+      )
+
+      await expect(
+        ssvProxyFactory
+          .connect(operator)
+          .makeBeaconDepositsAndRegisterValidators(
+            differentWithdrawalCreds,
+            ETH_PER_VALIDATOR,
+            feeManagerInstance,
+            client.address,
+            {
+              signatures: [depositData.signature],
+              depositDataRoots: [depositData.depositDataRoot],
+            },
+            operatorIdsU64,
+            [depositData.pubkey],
+            [MOCK_SHARES],
+            EMPTY_CLUSTER,
+            { value: ssvClusterFunding }
+          )
+      ).to.be.reverted
+    })
+  })
+
   describe("Service rejection and immediate refund", () => {
     it("should allow operator to reject service and client to refund immediately", async () => {
       // 1. Client deposits ETH
